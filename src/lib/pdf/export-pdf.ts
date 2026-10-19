@@ -9,7 +9,12 @@ import {
 import type {
   EditorAnnotation,
   PdfPoint,
+  TextReplacement,
 } from "@/types/editor";
+import {
+  assessTextReplacement,
+  type PdfExportService,
+} from "@/lib/pdf/text-editing-engine";
 
 function parseColor(value: string): RGB {
   const match = /^#([\da-f]{3}|[\da-f]{6})$/i.exec(value);
@@ -174,16 +179,104 @@ async function drawAnnotation(
   }
 }
 
+async function applyTextReplacement(
+  pdf: PDFDocument,
+  page: PDFPage,
+  replacement: TextReplacement
+): Promise<void> {
+  const assessment = assessTextReplacement(
+    replacement.originalItem,
+    replacement.replacementText
+  );
+  if (!assessment.supported) {
+    throw new Error(assessment.warnings[0] ?? "This text span cannot be replaced.");
+  }
+  if (!replacement.replacementText.trim()) {
+    throw new Error("Replacement text cannot be empty.");
+  }
+  if (/[\r\n]/.test(replacement.replacementText)) {
+    throw new Error(
+      "Replacement text must fit on one line. Paragraph reflow is not supported."
+    );
+  }
+  if (
+    !Number.isFinite(replacement.fontSize) ||
+    replacement.fontSize < 1 ||
+    replacement.fontSize > 72
+  ) {
+    throw new Error("Replacement font size must be between 1 and 72 points.");
+  }
+  if (
+    replacement.pageNumber !== replacement.originalItem.pageNumber ||
+    replacement.sourceItemId !== replacement.originalItem.id
+  ) {
+    throw new Error(
+      "The selected text span changed. Select the text again before exporting."
+    );
+  }
+
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  let textWidth: number;
+  try {
+    textWidth = font.widthOfTextAtSize(
+      replacement.replacementText,
+      replacement.fontSize
+    );
+  } catch {
+    throw new Error(
+      "Helvetica cannot encode some characters in this replacement. Use Latin-1 text or add the text as a regular annotation."
+    );
+  }
+  const availableWidth = replacement.pdfRect.width - 2;
+  if (textWidth > availableWidth) {
+    throw new Error(
+      `Replacement text is too wide for this span (${textWidth.toFixed(1)} pt needed, ${availableWidth.toFixed(1)} pt available). Shorten the text or reduce its font size.`
+    );
+  }
+
+  const rect = replacement.pdfRect;
+  page.drawRectangle({
+    x: rect.x - 1,
+    y: rect.y - 1,
+    width: rect.width + 2,
+    height: rect.height + 2,
+    color: parseColor(replacement.backgroundColor),
+  });
+  page.drawText(replacement.replacementText, {
+    x: rect.x,
+    y: rect.y + Math.max(0, (rect.height - replacement.fontSize) / 2),
+    size: replacement.fontSize,
+    font,
+    color: parseColor(replacement.color),
+    maxWidth: availableWidth,
+  });
+}
+
 /**
- * Applies supported editor overlays to a fresh copy of the source PDF.
- * Existing PDF text objects are deliberately left unchanged.
+ * Applies annotations and visual text covers to a fresh copy of the source PDF.
+ * Covered source glyphs remain in the PDF content stream; this is not redaction.
  */
 export async function exportPdfWithAnnotations(
   source: ArrayBuffer,
-  annotationsByPage: Record<number, EditorAnnotation[]>
+  annotationsByPage: Record<number, EditorAnnotation[]>,
+  replacements: TextReplacement[] = []
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.load(new Uint8Array(source.slice(0)));
   const pageCount = pdf.getPageCount();
+
+  for (const replacement of replacements) {
+    const pageNumber = replacement.pageNumber;
+    if (
+      !Number.isInteger(pageNumber) ||
+      pageNumber < 1 ||
+      pageNumber > pageCount
+    ) {
+      throw new Error(
+        `Text replacement references invalid PDF page ${pageNumber}.`
+      );
+    }
+    await applyTextReplacement(pdf, pdf.getPage(pageNumber - 1), replacement);
+  }
 
   for (const [pageKey, annotations] of Object.entries(annotationsByPage)) {
     const pageNumber = Number(pageKey);
@@ -198,3 +291,8 @@ export async function exportPdfWithAnnotations(
 
   return pdf.save();
 }
+
+export const pdfLibExportService: PdfExportService = {
+  export: (source, replacements, annotationsByPage = {}) =>
+    exportPdfWithAnnotations(source, annotationsByPage, replacements),
+};

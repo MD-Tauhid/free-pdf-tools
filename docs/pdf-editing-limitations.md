@@ -17,7 +17,7 @@ Because open-source web environments do not possess full PostScript-level layout
 ### 2.2 Font Subsetting
 - **The Issue:** To minimize file size, PDF generators rarely embed complete font files. Instead, they embed "font subsets" containing only the exact glyphs used in the original document. For instance, if the letter "Z" was never used in the original document, the embedded font does not have glyph data or character metrics for "Z".
 - **The Impact:** Direct in-place editing of text strings using the document's original embedded font will fail or display garbled characters if the user types letters not present in the subset.
-- **Our Strategy:** Replacement text is rendered using standard cross-platform fonts (Helvetica, Times Roman, Courier) or custom TrueType fonts embedded during export via `pdf-lib`.
+- **Current implementation:** Replacement text is rendered in standard Helvetica. Custom font embedding and exact source-font matching are not implemented.
 
 ### 2.3 Background Occlusion & Artifacts
 - **The Issue:** Because existing glyphs are baked into the PDF content stream, modifying text requires redacting (masking) the original glyphs before drawing the new text.
@@ -32,27 +32,31 @@ Because open-source web environments do not possess full PostScript-level layout
 
 ---
 
-## 3. Our Free / Open-Source Implementation Strategy
+## 3. Current Free / Open-Source Implementation
 
-Rather than falsely claiming to perform native PostScript text reflow, our application utilizes a transparent **Reconstruct, Mask & Overlay Engine**:
+Existing text can be changed only through a deliberately limited **visual cover-and-overlay** workflow:
 
 ```text
 [Original PDF Page]
         │
-        ▼ (1. PDF.js Extracts Text & Bounding Boxes)
-[Interactive Text Selection Layer]
+        ▼ (1. PDF.js extracts selectable text spans and bounding boxes)
+[Interactive text selection]
         │
-        ▼ (2. User edits selected text string in Properties Panel)
-[Live Canvas Preview (Dynamic Mask + Styled Replacement Text)]
+        ▼ (2. User edits one horizontal span and chooses text/cover colors)
+[Live visual cover and replacement preview]
         │
-        ▼ (3. Export via pdf-lib)
-[Pristine PDF] ──> [Draw Background Mask Rectangle] ──> [Draw New Text at Baseline] ──> [Exported PDF]
+        ▼ (3. Export via pdf-lib from the untouched source bytes)
+[Original PDF] ──> [Solid color rectangle] ──> [Helvetica replacement text] ──> [Exported PDF]
 ```
 
 ### Key Principles of This Approach:
-1. **Honest User Communication**: The interface clearly indicates when text length exceeds original bounds and provides real-time visual boundary indicators.
-2. **Non-Destructive Base**: Modifications are layered onto the original PDF objects without re-encoding existing unaffected pages or degrading image quality.
-3. **Fallback Options**: If a document has an intricate background or non-standard layout, users can switch to standard annotation mode (adding callouts, sticky notes, or freehand edits).
+1. **Not secure redaction**: The original text operators remain in the exported PDF and may be recovered by copying text or inspecting the PDF. Do not use this workflow to conceal sensitive information.
+2. **Manually selected solid cover**: The application cannot detect the source background. Users must choose a matching solid color. Image, gradient, patterned, and vector backgrounds may be visibly damaged by the patch.
+3. **Single horizontal span only**: Rotated spans, line breaks, paragraph reflow, and exact original font matching are unsupported. Helvetica is used for replacement text, and export rejects text that does not fit its fixed-width span or cannot be encoded by Helvetica.
+4. **Non-destructive base**: Preview and export start from the original in-memory PDF so repeated exports do not stack edits. Unaffected original page content is preserved.
+5. **Fallback options**: For complex backgrounds or unsupported text, use regular annotation tools instead. Those annotations do not modify source text.
+
+Automated tests exercise generated PDFs and unsupported-layout/error cases. Real-world validation against a diverse corpus of receipts, contracts, invoices, and academic papers has not yet been performed.
 
 ---
 
@@ -60,8 +64,8 @@ Rather than falsely claiming to perform native PostScript text reflow, our appli
 
 | Feature / Capability | Our Free Open-Source Engine (`pdfjs` + `pdf-lib`) | Commercial SDKs (e.g., PSPDFKit, Adobe PDF Services) |
 | :--- | :--- | :--- |
-| **Direct Paragraph Reflow** | ❌ Limited to block/line boundaries | ✔️ Advanced heuristic paragraph reflow |
-| **Original Font Matching** | ⚠️ Replaced with matched standard or uploaded fonts | ✔️ Synthesis/matching of embedded subset metrics |
+| **Direct Paragraph Reflow** | ❌ Not supported; replacement is limited to one extracted span | ✔️ Advanced heuristic paragraph reflow |
+| **Original Font Matching** | ⚠️ Helvetica replacement; original styling is not preserved | ✔️ Synthesis/matching of embedded subset metrics |
 | **Complex Image Backgrounds** | ⚠️ Noticeable patch unless background is solid | ⚠️ Often still leaves visual artifacts |
 | **Scanned Document Editing** | ❌ Requires future OCR integration | ✔️ Integrated server-side OCR |
 | **Licensing & Running Cost** | **$0 / Free forever** | **\$5,000 to \$50,000+ per year** |

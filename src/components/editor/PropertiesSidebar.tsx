@@ -2,7 +2,12 @@
 
 import * as React from "react";
 import { usePdfEditorStore } from "@/stores/pdf-editor-store";
-import type { EditorAnnotation, TextAnnotation } from "@/types/editor";
+import type {
+  EditorAnnotation,
+  TextAnnotation,
+  TextReplacement,
+} from "@/types/editor";
+import { assessTextReplacement } from "@/lib/pdf/text-editing-engine";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -29,10 +34,86 @@ function isTextAnnotation(a: EditorAnnotation): a is TextAnnotation {
 function SelectedTextPanel() {
   const selectedTextItem = usePdfEditorStore((s) => s.selectedTextItem);
   const selectTextItem = usePdfEditorStore((s) => s.selectTextItem);
+  const replacementsByPage = usePdfEditorStore(
+    (s) =>
+      selectedTextItem
+        ? s.textReplacementsByPage[selectedTextItem.item.pageNumber]
+        : undefined
+  );
+  const replacementPreview = usePdfEditorStore((s) => s.replacementPreview);
+  const setReplacementPreview = usePdfEditorStore(
+    (s) => s.setReplacementPreview
+  );
+  const applyTextReplacement = usePdfEditorStore(
+    (s) => s.applyTextReplacement
+  );
+  const removeTextReplacement = usePdfEditorStore(
+    (s) => s.removeTextReplacement
+  );
+  const existingReplacement = replacementsByPage?.find(
+    (replacement) => replacement.sourceItemId === selectedTextItem?.item.id
+  );
+  const defaultFontSize = Math.min(
+    72,
+    Math.max(1, selectedTextItem ? selectedTextItem.item.pdfRect.height * 0.8 : 10)
+  );
+  const [draft, setDraft] = React.useState(() => ({
+    text: existingReplacement?.replacementText ?? selectedTextItem?.item.text ?? "",
+    fontSize: existingReplacement?.fontSize ?? defaultFontSize,
+    color: existingReplacement?.color ?? "#000000",
+    backgroundColor: existingReplacement?.backgroundColor ?? "#ffffff",
+  }));
 
   if (!selectedTextItem) return null;
 
   const { item } = selectedTextItem;
+  const assessment = assessTextReplacement(item, draft.text);
+  const canApply =
+    assessment.supported &&
+    draft.text.trim().length > 0 &&
+    draft.text !== item.text;
+  const hasPreview = replacementPreview?.sourceItemId === item.id;
+
+  const createReplacement = (
+    values: typeof draft
+  ): TextReplacement => ({
+    id: existingReplacement?.id ?? crypto.randomUUID(),
+    type: "text-replacement",
+    sourceItemId: item.id,
+    originalItem: item,
+    originalText: item.text,
+    replacementText: values.text,
+    fontSize: values.fontSize,
+    color: values.color,
+    backgroundColor: values.backgroundColor,
+    pageNumber: item.pageNumber,
+    pdfRect: item.pdfRect,
+  });
+
+  const updateDraft = (values: Partial<typeof draft>) => {
+    const next = { ...draft, ...values };
+    setDraft(next);
+    const nextAssessment = assessTextReplacement(item, next.text);
+    setReplacementPreview(
+      nextAssessment.supported &&
+        next.text.trim().length > 0 &&
+        next.text !== item.text
+        ? createReplacement(next)
+        : null
+    );
+  };
+
+  const cancelPreview = () => {
+    setReplacementPreview(null);
+    setDraft({
+      text: existingReplacement?.replacementText ?? item.text,
+      fontSize:
+        existingReplacement?.fontSize ??
+        Math.min(72, Math.max(1, item.pdfRect.height * 0.8)),
+      color: existingReplacement?.color ?? "#000000",
+      backgroundColor: existingReplacement?.backgroundColor ?? "#ffffff",
+    });
+  };
 
   return (
     <div className="p-4 space-y-3">
@@ -77,12 +158,112 @@ function SelectedTextPanel() {
         </div>
       </div>
 
-      {/* Limitation notice */}
+      <div className="space-y-3 border-t pt-3">
+        <p className="text-sm font-semibold">Replace this text span</p>
+        <label className="block space-y-1">
+          <span className="text-xs text-muted-foreground">Replacement text</span>
+          <textarea
+            value={draft.text}
+            onChange={(event) => updateDraft({ text: event.target.value })}
+            rows={2}
+            className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+            aria-label="Replacement text"
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-xs text-muted-foreground">Font size (pt)</span>
+          <input
+            type="number"
+            min={1}
+            max={72}
+            step={0.5}
+            value={draft.fontSize}
+            onChange={(event) => {
+              const value = Number(event.target.value);
+              if (Number.isFinite(value) && value >= 1 && value <= 72) {
+                updateDraft({ fontSize: value });
+              }
+            }}
+            className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+            aria-label="Replacement font size"
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="space-y-1 text-xs text-muted-foreground">
+            Text color
+            <input
+              type="color"
+              value={draft.color}
+              onChange={(event) => updateDraft({ color: event.target.value })}
+              className="block h-8 w-full cursor-pointer rounded border"
+              aria-label="Replacement text color"
+            />
+          </label>
+          <label className="space-y-1 text-xs text-muted-foreground">
+            Cover color
+            <input
+              type="color"
+              value={draft.backgroundColor}
+              onChange={(event) =>
+                updateDraft({ backgroundColor: event.target.value })
+              }
+              className="block h-8 w-full cursor-pointer rounded border"
+              aria-label="Replacement cover color"
+            />
+          </label>
+        </div>
+        {!assessment.supported && (
+          <p className="rounded border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+            {assessment.warnings[0]}
+          </p>
+        )}
+        {assessment.supported && draft.text.length > item.text.length && (
+          <p className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+            Longer text may not fit. Export checks the actual font width.
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            onClick={() => applyTextReplacement(createReplacement(draft))}
+            disabled={!canApply}
+          >
+            Apply replacement
+          </Button>
+          {hasPreview && (
+            <Button size="sm" variant="outline" onClick={cancelPreview}>
+              Cancel preview
+            </Button>
+          )}
+          {existingReplacement && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                removeTextReplacement(item.id, item.pageNumber);
+                setReplacementPreview(null);
+                setDraft({
+                  text: item.text,
+                  fontSize: Math.min(72, Math.max(1, item.pdfRect.height * 0.8)),
+                  color: "#000000",
+                  backgroundColor: "#ffffff",
+                });
+              }}
+            >
+              Revert applied text
+            </Button>
+          )}
+        </div>
+      </div>
+
       <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30 p-3 text-xs text-amber-800 dark:text-amber-300 flex gap-2">
         <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
         <span>
-          In-place text editing of existing PDF glyphs is not yet supported.
-          Use <strong>Add Text</strong> to overlay new text above this location.
+          Preview/export covers the source span with a solid color and draws
+          Helvetica over it. The original text remains recoverable; this is not
+          secure redaction. Choose a matching background color. Rotated text,
+          multiline text, complex backgrounds, and exact font matching are not
+          supported.
         </span>
       </div>
     </div>
@@ -342,7 +523,7 @@ export function PropertiesSidebar({ className }: PropertiesSidebarProps) {
         {selectedAnnotation ? (
           <AnnotationPropertiesPanel annotation={selectedAnnotation} />
         ) : (
-          <SelectedTextPanel />
+          <SelectedTextPanel key={selectedTextItem?.item.id ?? "no-selection"} />
         )}
       </div>
     </aside>

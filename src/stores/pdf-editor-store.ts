@@ -12,6 +12,7 @@ import type {
   EditorAnnotation,
   HistoryAction,
   SelectedTextItem,
+  TextReplacement,
 } from "@/types/editor";
 
 // ---------------------------------------------------------------------------
@@ -24,6 +25,12 @@ export interface PdfEditorState {
 
   /** All annotation overlays keyed by page number (1-based). */
   annotationsByPage: Record<number, EditorAnnotation[]>;
+
+  /** Applied single-span visual replacements, keyed by PDF page. */
+  textReplacementsByPage: Record<number, TextReplacement[]>;
+
+  /** Draft preview that is not included in exported PDFs until applied. */
+  replacementPreview: TextReplacement | null;
 
   /** Undo stack (most-recent at end). */
   undoStack: HistoryAction[];
@@ -59,6 +66,14 @@ export interface PdfEditorActions {
 
   /** Get all annotations for a specific page. */
   getAnnotationsForPage: (pageNumber: number) => EditorAnnotation[];
+
+  getTextReplacementsForPage: (pageNumber: number) => TextReplacement[];
+
+  setReplacementPreview: (replacement: TextReplacement | null) => void;
+
+  applyTextReplacement: (replacement: TextReplacement) => void;
+
+  removeTextReplacement: (sourceItemId: string, pageNumber: number) => void;
 
   /** Select a text item from the text selection layer. */
   selectTextItem: (item: SelectedTextItem | null) => void;
@@ -96,6 +111,8 @@ export const usePdfEditorStore = create<PdfEditorState & PdfEditorActions>(
     // --- initial state ---
     activeTool: "select",
     annotationsByPage: {},
+    textReplacementsByPage: {},
+    replacementPreview: null,
     undoStack: [],
     redoStack: [],
     selectedTextItem: null,
@@ -109,6 +126,7 @@ export const usePdfEditorStore = create<PdfEditorState & PdfEditorActions>(
         activeTool: tool,
         selectedAnnotationId: null,
         selectedTextItem: null,
+        replacementPreview: null,
         propertiesPanelOpen: false,
       }),
 
@@ -175,10 +193,71 @@ export const usePdfEditorStore = create<PdfEditorState & PdfEditorActions>(
       return get().annotationsByPage[pageNumber] ?? [];
     },
 
+    getTextReplacementsForPage: (pageNumber) =>
+      get().textReplacementsByPage[pageNumber] ?? [],
+
+    setReplacementPreview: (replacement) =>
+      set({ replacementPreview: replacement }),
+
+    applyTextReplacement: (replacement) => {
+      const { textReplacementsByPage, undoStack } = get();
+      const pageReplacements =
+        textReplacementsByPage[replacement.pageNumber] ?? [];
+      const before = pageReplacements.find(
+        (current) => current.sourceItemId === replacement.sourceItemId
+      );
+      const action: HistoryAction = before
+        ? { kind: "text-replacement-update", before, after: replacement }
+        : { kind: "text-replacement-add", replacement };
+
+      set({
+        textReplacementsByPage: {
+          ...textReplacementsByPage,
+          [replacement.pageNumber]: before
+            ? pageReplacements.map((current) =>
+                current.sourceItemId === replacement.sourceItemId
+                  ? replacement
+                  : current
+              )
+            : [...pageReplacements, replacement],
+        },
+        replacementPreview: null,
+        undoStack: [...undoStack.slice(-MAX_HISTORY + 1), action],
+        redoStack: [],
+        selectedAnnotationId: null,
+        propertiesPanelOpen: true,
+      });
+    },
+
+    removeTextReplacement: (sourceItemId, pageNumber) => {
+      const { textReplacementsByPage, undoStack } = get();
+      const pageReplacements = textReplacementsByPage[pageNumber] ?? [];
+      const target = pageReplacements.find(
+        (replacement) => replacement.sourceItemId === sourceItemId
+      );
+      if (!target) return;
+      const action: HistoryAction = {
+        kind: "text-replacement-remove",
+        replacement: target,
+      };
+      set({
+        textReplacementsByPage: {
+          ...textReplacementsByPage,
+          [pageNumber]: pageReplacements.filter(
+            (replacement) => replacement.sourceItemId !== sourceItemId
+          ),
+        },
+        replacementPreview: null,
+        undoStack: [...undoStack.slice(-MAX_HISTORY + 1), action],
+        redoStack: [],
+      });
+    },
+
     selectTextItem: (item) =>
       set({
         selectedTextItem: item,
         selectedAnnotationId: null,
+        replacementPreview: null,
         propertiesPanelOpen: item !== null,
       }),
 
@@ -186,18 +265,53 @@ export const usePdfEditorStore = create<PdfEditorState & PdfEditorActions>(
       set({
         selectedAnnotationId: id,
         selectedTextItem: null,
+        replacementPreview: null,
         propertiesPanelOpen: id !== null,
       }),
 
     undo: () => {
-      const { undoStack, redoStack, annotationsByPage } = get();
+      const {
+        undoStack,
+        redoStack,
+        annotationsByPage,
+        textReplacementsByPage,
+      } = get();
       if (undoStack.length === 0) return;
 
       const action = undoStack[undoStack.length - 1];
       const remaining = undoStack.slice(0, -1);
       let newAnnotationsByPage = { ...annotationsByPage };
+      let newTextReplacementsByPage = { ...textReplacementsByPage };
 
-      if (action.kind === "add") {
+      if (action.kind === "text-replacement-add") {
+        const page = action.replacement.pageNumber;
+        newTextReplacementsByPage = {
+          ...newTextReplacementsByPage,
+          [page]: (newTextReplacementsByPage[page] ?? []).filter(
+            (replacement) =>
+              replacement.sourceItemId !== action.replacement.sourceItemId
+          ),
+        };
+      } else if (action.kind === "text-replacement-remove") {
+        const page = action.replacement.pageNumber;
+        newTextReplacementsByPage = {
+          ...newTextReplacementsByPage,
+          [page]: [
+            ...(newTextReplacementsByPage[page] ?? []),
+            action.replacement,
+          ],
+        };
+      } else if (action.kind === "text-replacement-update") {
+        const page = action.before.pageNumber;
+        newTextReplacementsByPage = {
+          ...newTextReplacementsByPage,
+          [page]: (newTextReplacementsByPage[page] ?? []).map((replacement) =>
+            replacement.sourceItemId === action.before.sourceItemId
+              ? action.before
+              : replacement
+          ),
+        };
+      } else if (action.kind === "add") {
         // Reverse: remove the annotation that was added
         const pg = action.annotation.pageNumber;
         newAnnotationsByPage = {
@@ -228,6 +342,8 @@ export const usePdfEditorStore = create<PdfEditorState & PdfEditorActions>(
         undoStack: remaining,
         redoStack: [...redoStack, action],
         annotationsByPage: newAnnotationsByPage,
+        textReplacementsByPage: newTextReplacementsByPage,
+        replacementPreview: null,
         selectedAnnotationId: null,
         selectedTextItem: null,
         propertiesPanelOpen: false,
@@ -235,14 +351,48 @@ export const usePdfEditorStore = create<PdfEditorState & PdfEditorActions>(
     },
 
     redo: () => {
-      const { undoStack, redoStack, annotationsByPage } = get();
+      const {
+        undoStack,
+        redoStack,
+        annotationsByPage,
+        textReplacementsByPage,
+      } = get();
       if (redoStack.length === 0) return;
 
       const action = redoStack[redoStack.length - 1];
       const remaining = redoStack.slice(0, -1);
       let newAnnotationsByPage = { ...annotationsByPage };
+      let newTextReplacementsByPage = { ...textReplacementsByPage };
 
-      if (action.kind === "add") {
+      if (action.kind === "text-replacement-add") {
+        const page = action.replacement.pageNumber;
+        newTextReplacementsByPage = {
+          ...newTextReplacementsByPage,
+          [page]: [
+            ...(newTextReplacementsByPage[page] ?? []),
+            action.replacement,
+          ],
+        };
+      } else if (action.kind === "text-replacement-remove") {
+        const page = action.replacement.pageNumber;
+        newTextReplacementsByPage = {
+          ...newTextReplacementsByPage,
+          [page]: (newTextReplacementsByPage[page] ?? []).filter(
+            (replacement) =>
+              replacement.sourceItemId !== action.replacement.sourceItemId
+          ),
+        };
+      } else if (action.kind === "text-replacement-update") {
+        const page = action.after.pageNumber;
+        newTextReplacementsByPage = {
+          ...newTextReplacementsByPage,
+          [page]: (newTextReplacementsByPage[page] ?? []).map((replacement) =>
+            replacement.sourceItemId === action.after.sourceItemId
+              ? action.after
+              : replacement
+          ),
+        };
+      } else if (action.kind === "add") {
         const pg = action.annotation.pageNumber;
         newAnnotationsByPage = {
           ...newAnnotationsByPage,
@@ -271,6 +421,8 @@ export const usePdfEditorStore = create<PdfEditorState & PdfEditorActions>(
         redoStack: remaining,
         undoStack: [...undoStack, action],
         annotationsByPage: newAnnotationsByPage,
+        textReplacementsByPage: newTextReplacementsByPage,
+        replacementPreview: null,
         selectedAnnotationId: null,
         selectedTextItem: null,
         propertiesPanelOpen: false,
@@ -286,6 +438,8 @@ export const usePdfEditorStore = create<PdfEditorState & PdfEditorActions>(
       set({
         activeTool: "select",
         annotationsByPage: {},
+        textReplacementsByPage: {},
+        replacementPreview: null,
         undoStack: [],
         redoStack: [],
         selectedAnnotationId: null,

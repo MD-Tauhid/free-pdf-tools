@@ -115,6 +115,18 @@ export interface HighlightAnnotation extends AnnotationBase {
   coveredItemIds: string[];
 }
 
+/** Visual replacement of one extracted text span; not a secure redaction. */
+export interface TextReplacement extends AnnotationBase {
+  type: "text-replacement";
+  sourceItemId: string;
+  originalItem: ExtractedTextItem;
+  originalText: string;
+  replacementText: string;
+  fontSize: number;
+  color: string;
+  backgroundColor: string;
+}
+
 /** An image placed on a page. */
 export interface ImageAnnotation extends AnnotationBase {
   type: "image";
@@ -149,10 +161,20 @@ export type EditorAnnotation =
 // Undo/Redo history entry
 // ---------------------------------------------------------------------------
 
+export type TextReplacementHistoryAction =
+  | { kind: "text-replacement-add"; replacement: TextReplacement }
+  | { kind: "text-replacement-remove"; replacement: TextReplacement }
+  | {
+      kind: "text-replacement-update";
+      before: TextReplacement;
+      after: TextReplacement;
+    };
+
 export type HistoryAction =
   | { kind: "add"; annotation: EditorAnnotation }
   | { kind: "remove"; annotation: EditorAnnotation }
-  | { kind: "update"; before: EditorAnnotation; after: EditorAnnotation };
+  | { kind: "update"; before: EditorAnnotation; after: EditorAnnotation }
+  | TextReplacementHistoryAction;
 
 // ---------------------------------------------------------------------------
 // Editor selection state

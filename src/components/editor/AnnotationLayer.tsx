@@ -8,12 +8,14 @@ import type {
   EditorAnnotation,
   PdfPoint,
   SignatureAnnotation,
+  TextReplacement,
   TextAnnotation,
 } from "@/types/editor";
 import { cn } from "@/lib/utils";
 import { pdfPointToViewport, pdfRectToViewportRect } from "@/lib/pdf/coordinates";
 
 const EMPTY_ANNOTATIONS: EditorAnnotation[] = [];
+const EMPTY_REPLACEMENTS: TextReplacement[] = [];
 
 function pdfRectToStyle(
   pdfRect: { x: number; y: number; width: number; height: number },
@@ -170,7 +172,21 @@ export function AnnotationLayer({
 }: AnnotationLayerProps) {
   const annotationsByPage = usePdfEditorStore((state) => state.annotationsByPage);
   const annotations = annotationsByPage[pageNumber] ?? EMPTY_ANNOTATIONS;
-  if (annotations.length === 0) return null;
+  const replacementsByPage = usePdfEditorStore(
+    (state) => state.textReplacementsByPage
+  );
+  const appliedReplacements =
+    replacementsByPage[pageNumber] ?? EMPTY_REPLACEMENTS;
+  const replacementPreview = usePdfEditorStore(
+    (state) => state.replacementPreview
+  );
+  const visibleReplacements = appliedReplacements.filter(
+    (replacement) => replacementPreview?.sourceItemId !== replacement.sourceItemId
+  );
+  const replacements = replacementPreview?.pageNumber === pageNumber
+    ? [...visibleReplacements, replacementPreview]
+    : visibleReplacements;
+  if (annotations.length === 0 && replacements.length === 0) return null;
 
   return (
     <div
@@ -178,6 +194,29 @@ export function AnnotationLayer({
       aria-label="Annotation overlays"
       data-testid="annotation-layer"
     >
+      {replacements.map((replacement) => {
+        const rect = pdfRectToViewportRect(replacement.pdfRect, viewport);
+        return (
+          <div
+            key={`replacement-${replacement.sourceItemId}`}
+            className="absolute flex items-center overflow-hidden whitespace-nowrap"
+            aria-label={`Text replacement preview: ${replacement.replacementText}`}
+            style={{
+              left: rect.x - viewport.scale,
+              top: rect.y - viewport.scale,
+              width: rect.width + 2 * viewport.scale,
+              height: rect.height + 2 * viewport.scale,
+              paddingLeft: viewport.scale,
+              backgroundColor: replacement.backgroundColor,
+              color: replacement.color,
+              fontSize: replacement.fontSize * viewport.scale,
+              lineHeight: 1,
+            }}
+          >
+            {replacement.replacementText}
+          </div>
+        );
+      })}
       {annotations.map((annotation) => {
         switch (annotation.type) {
           case "text-box":

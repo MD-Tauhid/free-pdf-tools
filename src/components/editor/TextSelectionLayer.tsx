@@ -7,89 +7,11 @@ import type { ExtractedTextItem, SelectedTextItem, ScreenRect } from "@/types/ed
 import { usePdfEditorStore } from "@/stores/pdf-editor-store";
 import { cn } from "@/lib/utils";
 import { pdfRectToViewportRect } from "@/lib/pdf/coordinates";
+import type { PdfTextExtractor } from "@/lib/pdf/text-editing-engine";
 
 // ---------------------------------------------------------------------------
 // Text extraction helper
 // ---------------------------------------------------------------------------
-
-/**
- * Extract text items from a PDF page via PDF.js getTextContent().
- *
- * PDF.js returns text items with a 6-element transform matrix [a,b,c,d,e,f]
- * where e = x-origin and f = y-origin in PDF user-space (bottom-left).
- * We derive the pdfRect from the transform + width + height.
- */
-async function extractPageTextItems(
-  pdfDoc: PDFDocumentProxy,
-  pageNumber: number
-): Promise<ExtractedTextItem[]> {
-  const page = await pdfDoc.getPage(pageNumber);
-  const content = await page.getTextContent();
-  const viewBox = page.view;
-
-  const items: ExtractedTextItem[] = [];
-  let idx = 0;
-
-  for (const item of content.items) {
-    // PDF.js TextItem has a `str` field and `transform`
-    const ti = item as {
-      str: string;
-      transform: number[];
-      width: number;
-      height: number;
-      fontName: string;
-    };
-
-    if (!ti.str || ti.str.trim() === "") {
-      idx++;
-      continue;
-    }
-
-    const [, , , , tx, ty] = ti.transform as [
-      number,
-      number,
-      number,
-      number,
-      number,
-      number
-    ];
-
-    // PDF coordinate: origin bottom-left.
-    // pdfRect: x=left, y=bottom edge, width, height
-    const pdfRect = {
-      x: tx,
-      y: ty,
-      width: Math.abs(ti.width),
-      height: Math.abs(ti.height) || 10, // fallback for zero-height items
-    };
-
-    // Skip text items outside the visible page box.
-    if (
-      pdfRect.x + pdfRect.width < viewBox[0] - 10 ||
-      pdfRect.y + pdfRect.height < viewBox[1] - 10 ||
-      pdfRect.x > viewBox[2] + 10 ||
-      pdfRect.y > viewBox[3] + 10
-    ) {
-      idx++;
-      continue;
-    }
-
-    items.push({
-      id: `p${pageNumber}-t${idx}`,
-      text: ti.str,
-      transform: ti.transform as [number, number, number, number, number, number],
-      width: Math.abs(ti.width),
-      height: Math.abs(ti.height) || 10,
-      fontName: ti.fontName ?? "",
-      pdfRect,
-      pageNumber,
-    });
-
-    idx++;
-  }
-
-  return items;
-}
 
 // ---------------------------------------------------------------------------
 // Coordinate transformation: PDF → Screen
@@ -118,6 +40,7 @@ function pdfRectToScreenRect(
 
 interface TextSelectionLayerProps {
   pdfDoc: PDFDocumentProxy;
+  textExtractor: PdfTextExtractor;
   pageNumber: number;
   viewport: PageViewport;
   rotation?: number;
@@ -140,6 +63,7 @@ interface TextSelectionLayerProps {
  */
 export function TextSelectionLayer({
   pdfDoc,
+  textExtractor,
   pageNumber,
   viewport,
   rotation = 0,
@@ -167,7 +91,7 @@ export function TextSelectionLayer({
     async function extract() {
       setIsExtracting(true);
       try {
-        const items = await extractPageTextItems(pdfDoc, pageNumber);
+        const items = await textExtractor.extractPage(pdfDoc, pageNumber);
         if (!cancelled) {
           setTextItems(items);
           setExtractionError(null);
@@ -190,7 +114,7 @@ export function TextSelectionLayer({
       cancelled = true;
     };
     // cacheKey encodes pdfDoc+pageNumber+rotation; scale does not affect text extraction
-  }, [cacheKey, pdfDoc, pageNumber]);
+  }, [cacheKey, pdfDoc, pageNumber, textExtractor]);
 
   // Only render interactive layer when select tool is active
   if (activeTool !== "select") return null;

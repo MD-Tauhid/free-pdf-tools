@@ -49,7 +49,8 @@ export default function PdfEditorPage() {
               </li>
               <li>
                 <strong className="text-foreground">Edit:</strong> Click on the
-                page to add text boxes or select existing text spans.
+                page to add text boxes or select a text span to preview a visual
+                replacement. Replacement covers are not secure redactions.
               </li>
               <li>
                 <strong className="text-foreground">Undo/Redo:</strong> Use

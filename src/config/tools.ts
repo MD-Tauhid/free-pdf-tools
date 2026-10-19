@@ -17,14 +17,15 @@ export const toolsConfig: ToolConfig[] = [
     title: "PDF Editor",
     shortDescription: "Add text, highlights, drawings, signatures, and images to PDFs online.",
     description:
-      "Inspect selectable text spans, then add text overlays, highlights, freehand drawings, signatures, and images. Existing PDF text glyphs are not modified.",
+      "Annotate PDFs and visually cover-and-replace supported single-line text spans. Replacement uses a solid-color patch and Helvetica; original text remains recoverable, so this is not secure redaction.",
     href: "/pdf-editor",
     iconName: "FileEdit",
     badge: "Popular",
     category: "edit",
     popular: true,
     features: [
-      "Inspect existing text and its position without changing original glyphs",
+      "Select and visually replace one horizontal text span with a solid-color cover",
+      "Original text remains recoverable; this is not secure redaction",
       "Add and format text boxes, highlights, and freehand drawings",
       "Place drawn signatures and PNG/JPEG image stamps",
       "Export annotations privately in your browser",

@@ -18,7 +18,7 @@ import {
   calculateFitPageScale,
   viewportPointToPdf,
 } from "@/lib/pdf/coordinates";
-import { exportPdfWithAnnotations } from "@/lib/pdf/export-pdf";
+import { pdfEditingEngine } from "@/lib/pdf/pdf-editing-engine";
 import { Button } from "@/components/ui/button";
 import { PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -71,6 +71,9 @@ export function EditorWorkspace({ className }: EditorWorkspaceProps) {
   const selectAnnotation = usePdfEditorStore((s) => s.selectAnnotation);
   const selectTextItem = usePdfEditorStore((s) => s.selectTextItem);
   const annotationsByPage = usePdfEditorStore((s) => s.annotationsByPage);
+  const textReplacementsByPage = usePdfEditorStore(
+    (s) => s.textReplacementsByPage
+  );
 
   // --- UI state ---
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
@@ -139,7 +142,9 @@ export function EditorWorkspace({ className }: EditorWorkspaceProps) {
     setExporting(true);
     setExportError(null);
     setExportSuccess(null);
-    void exportPdfWithAnnotations(arrayBuffer, annotationsByPage)
+    const replacements = Object.values(textReplacementsByPage).flat();
+    void pdfEditingEngine.exportService
+      .export(arrayBuffer, replacements, annotationsByPage)
       .then((bytes) => {
         const blob = new Blob([Uint8Array.from(bytes)], {
           type: "application/pdf",
@@ -167,7 +172,13 @@ export function EditorWorkspace({ className }: EditorWorkspaceProps) {
         );
       })
       .finally(() => setExporting(false));
-  }, [annotationsByPage, arrayBuffer, exporting, fileName]);
+  }, [
+    annotationsByPage,
+    arrayBuffer,
+    exporting,
+    fileName,
+    textReplacementsByPage,
+  ]);
 
   const handlePickImage = React.useCallback(() => {
     setImageError(null);
@@ -495,6 +506,7 @@ export function EditorWorkspace({ className }: EditorWorkspaceProps) {
               <>
                 <TextSelectionLayer
                   pdfDoc={pdfDoc}
+                  textExtractor={pdfEditingEngine.textExtractor}
                   pageNumber={currentPage}
                   viewport={pageViewport}
                   rotation={pageViewport.rotation}

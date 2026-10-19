@@ -78,17 +78,18 @@ This document outlines the phased roadmap for building **Free PDF Tools**, a fas
 ---
 
 ### Phase 5: Advanced Text Editing Engine
-- **Status:** Pending
+- **Status:** In progress (single-span visual replacement implemented; diverse sample-PDF validation pending)
 - **Objectives:**
-  - Define extensible editing engine abstraction (`PdfDocumentLoader`, `PdfTextExtractor`, `PdfLayoutAnalyzer`, `PdfEditingEngine`, `PdfExportService`).
-  - Implement selected block text editing panel with live preview.
-  - Implement visual mask & redaction replacement: accurately occlude existing glyphs with matching background bounding boxes, then render replacement text via `pdf-lib` with standard & custom fonts.
-  - Detect unsupported layouts (vertical text, complex vector graphics backgrounds, unsupported fonts) and provide actionable user warnings.
-  - Test against diverse sample PDFs (receipts, contracts, invoices, academic papers).
+  - Define an extensible text extractor, layout analyzer, editing engine, and export service around the existing document loader.
+  - Implement selected single-span editing with a live visual cover-and-replacement preview.
+  - Export supported replacements as a solid-color cover plus Helvetica text, without altering the original source text objects.
+  - Reject rotated, multiline, overflowing, or Helvetica-unencodable replacements; warn that background complexity cannot be detected.
+  - Validate against diverse sample PDFs (receipts, contracts, invoices, academic papers).
 - **Acceptance Criteria:**
-  - Users can select existing text lines/blocks, modify text, and preview changes.
-  - Exported PDF cleanly replaces targeted text with user modifications.
-  - Clear warnings displayed when document structure prevents seamless replacement.
+  - [x] Users can select an extracted text span, edit it, and preview or cancel a visual replacement.
+  - [x] Exported PDFs contain a solid-color cover and Helvetica replacement over supported spans; original source text remains recoverable and is not securely redacted.
+  - [x] Unsupported span/layout/encoding conditions produce actionable warnings or export errors.
+  - [ ] Verify visual output against diverse real-world sample PDFs; the automated suite currently uses generated PDFs.
 
 ---
 
