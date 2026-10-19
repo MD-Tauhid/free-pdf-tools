@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { toolsConfig } from "@/config/tools";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { FileType, UploadCloud, Shield, CheckCircle2 } from "lucide-react";
+import { PdfToWordConverter } from "@/components/pdf-to-word/PdfToWordConverter";
+import { FileType, Shield, CheckCircle2 } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Convert PDF to Word Online Free — Editable DOCX",
   description:
-    "Convert PDF files to editable Microsoft Word (.docx) documents online for free. Accurate formatting, headings, and paragraph flow.",
+    "Convert text-based PDF documents to editable Microsoft Word files in your browser. Scanned pages require OCR and are not converted.",
 };
 
 export default function PdfToWordPage() {
@@ -27,28 +26,10 @@ export default function PdfToWordPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border-2 border-dashed border-border bg-card p-10 text-center shadow-sm">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 mb-4">
-          <UploadCloud className="h-8 w-8" />
-        </div>
-        <h3 className="text-xl font-semibold text-foreground">
-          Choose a PDF to Convert to Word
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-          Extract text and layout into an editable DOCX file.
-        </p>
-
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <label className={cn(buttonVariants({ variant: "default" }), "cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-medium")}>
-            Select PDF File
-            <input type="file" accept="application/pdf" className="sr-only" />
-          </label>
-        </div>
-
-        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Shield className="h-4 w-4 text-green-600" />
-          <span>Local Text Extraction: Private and secure</span>
-        </div>
+      <PdfToWordConverter />
+      <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <Shield className="h-4 w-4 text-green-600" />
+        <span>Maximum file size: 50 MB. Processing stays in your browser.</span>
       </div>
 
       <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-12">
@@ -58,8 +39,8 @@ export default function PdfToWordPage() {
           </h2>
           <ol className="space-y-3 text-sm text-muted-foreground list-decimal list-inside leading-relaxed">
             <li>Select your PDF document from your device.</li>
-            <li>Our pipeline reads paragraph bounds and font weights.</li>
-            <li>Generates a standard Microsoft Word .docx file.</li>
+            <li>Text spans are grouped into lines and paragraphs; font names are used to infer bold and italic styles.</li>
+            <li>A standard .docx file is generated locally. Scanned pages are reported and skipped.</li>
             <li>Download and edit freely in Word or Google Docs.</li>
           </ol>
         </div>

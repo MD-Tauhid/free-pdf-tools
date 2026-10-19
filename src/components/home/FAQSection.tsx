@@ -23,7 +23,7 @@ const faqs: FAQItem[] = [
   {
     question: "How does PDF to Word conversion work?",
     answer:
-      "Our PDF to Word pipeline inspects glyph positions, line heights, and font weights to intelligently reconstruct structured paragraphs, headings, and lists into a standard Microsoft Word (.docx) document, ready for editing in Word, LibreOffice, or Google Docs.",
+      "PDF-to-Word runs in your browser and heuristically rebuilds selectable text into basic paragraphs, headings, bullet lists, and font styles. Complex layouts may differ. Scanned/image-only pages need OCR, which is not available, and are reported instead of converted.",
   },
   {
     question: "How does Word-to-PDF conversion handle my document?",

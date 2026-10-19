@@ -160,9 +160,19 @@ async function convertRequest(request: Request): Promise<Response> {
 
   const workerUrl = process.env.CONVERSION_WORKER_URL;
   const workerToken = process.env.CONVERSION_WORKER_TOKEN;
-  if (!workerUrl || !workerToken || workerToken.length < 32) {
-    console.error("DOCX conversion worker environment is not configured.");
-    return jsonError("Word-to-PDF conversion is temporarily unavailable.", 503);
+  if (!workerUrl) {
+    console.error("CONVERSION_WORKER_URL is not configured.");
+    return jsonError(
+      "Word-to-PDF conversion is not configured: set CONVERSION_WORKER_URL and deploy the conversion worker.",
+      503
+    );
+  }
+  if (!workerToken || workerToken.length < 32) {
+    console.error("CONVERSION_WORKER_TOKEN is missing or too short.");
+    return jsonError(
+      "Word-to-PDF conversion credentials are not configured. Set a worker token of at least 32 characters.",
+      503
+    );
   }
 
   let endpoint: URL;
@@ -200,7 +210,10 @@ async function convertRequest(request: Request): Promise<Response> {
       return jsonError("Conversion timed out. Try a smaller or simpler document.", 504);
     }
     console.error("Conversion worker request failed:", error);
-    return jsonError("The conversion service could not be reached.", 502);
+    return jsonError(
+      "The conversion worker could not be reached. Check that it is running and CONVERSION_WORKER_URL is correct.",
+      502
+    );
   }
 
   if (!workerResponse.ok) {
@@ -222,6 +235,13 @@ async function convertRequest(request: Request): Promise<Response> {
       workerResponse.status >= 400 && workerResponse.status <= 599
         ? workerResponse.status
         : 502;
+    if (status === 401) {
+      console.error("Conversion worker rejected the configured bearer token.");
+      return jsonError(
+        "The conversion worker rejected its configured token. Ensure WORKER_API_TOKEN and CONVERSION_WORKER_TOKEN match.",
+        502
+      );
+    }
     return jsonError(message, status);
   }
 

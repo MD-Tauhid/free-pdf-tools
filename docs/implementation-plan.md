@@ -108,16 +108,17 @@ This document outlines the phased roadmap for building **Free PDF Tools**, a fas
 ---
 
 ### Phase 7: PDF-to-Word Conversion Pipeline
-- **Status:** Pending
+- **Status:** Implemented (automated validation complete; real-world PDF layout validation pending)
 - **Objectives:**
-  - Implement browser-based PDF text and layout extraction using `pdfjs-dist` reading glyph positions, font sizes, and paragraph bounds.
-  - Generate clean DOCX documents using the `docx` npm library.
-  - Group text items into paragraphs, headings, and lists based on vertical line spacing and font weights.
-  - Detect image-only/scanned documents and notify users regarding OCR requirements.
+  - [x] Implement browser-based PDF text and layout extraction using `pdfjs-dist` glyph positions, font sizes, and paragraph bounds.
+  - [x] Generate DOCX documents using the `docx` npm library.
+  - [x] Group text items into paragraphs, headings, and basic bullet lists using spacing and font-name heuristics.
+  - [x] Detect pages with no selectable text and notify users that OCR is unavailable.
 - **Acceptance Criteria:**
-  - Text PDFs convert to editable DOCX documents with readable paragraph flow.
-  - Headings, bold weights, and basic layouts map appropriately to Word styles.
-  - Scanned PDFs display helpful notices explaining OCR needs.
+  - [x] Text PDFs convert to editable DOCX documents with heuristically reconstructed paragraph flow.
+  - [x] Headings, bold/italic weights, and basic bullet lists map to Word styles.
+  - [x] Scanned PDFs display helpful notices explaining OCR needs; mixed scanned/text documents retain extracted pages and warn about skipped pages.
+  - [ ] Validate output against diverse real-world PDFs; complex columns, tables, and layout fidelity are not guaranteed.
 
 ---
 

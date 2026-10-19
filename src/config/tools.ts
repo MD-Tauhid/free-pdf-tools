@@ -34,19 +34,19 @@ export const toolsConfig: ToolConfig[] = [
   {
     id: "pdf-to-word",
     title: "PDF to Word",
-    shortDescription: "Convert PDF documents to editable Microsoft Word (.docx) files.",
+    shortDescription: "Extract selectable PDF text into an editable Word document.",
     description:
-      "Extract structured text, paragraphs, and headings from PDFs and generate fully editable DOCX files ready for Microsoft Word or Google Docs.",
+      "Extract selectable text in your browser and heuristically rebuild paragraphs, headings, basic bullet lists, and font styles as a DOCX. Complex layouts may differ, and scanned pages require OCR, which is not available.",
     href: "/pdf-to-word",
     iconName: "FileType",
     badge: "Fast",
     category: "convert",
     popular: true,
     features: [
-      "Preserves paragraph flow and line breaks",
-      "Outputs standard DOCX format",
-      "Instant conversion without waiting in queues",
-      "No registration or email required",
+      "Reconstructs basic paragraphs, headings, and bullet lists",
+      "Infers bold and italic styles from PDF font names",
+      "Scanned/image-only pages are reported; OCR is not available",
+      "Files are processed locally in your browser",
     ],
   },
   {

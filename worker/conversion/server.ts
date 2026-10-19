@@ -79,7 +79,15 @@ function runLibreOffice(inputPath: string, outputDirectory: string, profile: str
         outputDirectory,
         inputPath,
       ],
-      { stdio: "ignore" }
+      {
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          HOME: profile,
+          XDG_CACHE_HOME: profile,
+          XDG_CONFIG_HOME: profile,
+        },
+      }
     );
 
     let settled = false;

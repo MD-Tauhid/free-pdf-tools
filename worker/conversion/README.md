@@ -10,6 +10,19 @@ Build from the repository root so Docker can use the root lockfile:
 docker build -f worker/conversion/Dockerfile -t free-pdf-conversion-worker .
 ```
 
+### Local development
+
+Start Docker Desktop first. Then, from the repository root, run this in PowerShell to create matching local-only tokens for Compose and Next.js:
+
+```powershell
+$token = node -p "require('node:crypto').randomBytes(32).toString('hex')"
+Set-Content -NoNewline .env "CONVERSION_WORKER_TOKEN=$token"
+Set-Content .env.local "CONVERSION_WORKER_URL=http://127.0.0.1:8080`nCONVERSION_WORKER_TOKEN=$token"
+docker compose up -d --build conversion-worker
+```
+
+Restart `npm run dev` after creating `.env.local`, then check `http://localhost:8080/health`. The Next.js server reads `.env.local`; Docker Compose reads `.env`. Both are ignored by Git. To stop the worker, run `docker compose down`.
+
 Run the worker on a private application network and do not publish its port to the public internet. Set the same random token as `WORKER_API_TOKEN` on the worker and `CONVERSION_WORKER_TOKEN` on the Next.js application. Configure `CONVERSION_WORKER_URL` on the application with the worker's private base URL (for example `http://conversion-worker:8080`).
 
 Generate a token with `openssl rand -hex 32`. Use TLS for any network hop that crosses an untrusted network. Prefer a private network with no outbound internet access for the worker; LibreOffice processes untrusted Office files.

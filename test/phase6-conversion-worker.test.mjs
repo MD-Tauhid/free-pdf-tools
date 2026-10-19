@@ -140,6 +140,18 @@ assert.equal(tooLarge.status, 413);
 const originalFetch = globalThis.fetch;
 const originalWorkerUrl = process.env.CONVERSION_WORKER_URL;
 const originalWorkerToken = process.env.CONVERSION_WORKER_TOKEN;
+delete process.env.CONVERSION_WORKER_URL;
+delete process.env.CONVERSION_WORKER_TOKEN;
+const unconfigured = await convert(
+  new Request("http://localhost/api/convert", {
+    method: "POST",
+    headers: uploadHeaders,
+    body: createZip(validEntries),
+  })
+);
+assert.equal(unconfigured.status, 503);
+assert.match((await unconfigured.json()).error, /set CONVERSION_WORKER_URL/);
+
 process.env.CONVERSION_WORKER_URL = "http://conversion-worker:8080";
 process.env.CONVERSION_WORKER_TOKEN = "a".repeat(64);
 try {
