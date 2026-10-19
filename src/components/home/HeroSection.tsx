@@ -126,7 +126,7 @@ export function HeroSection() {
         <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto pt-6 border-t border-border/60">
           <div className="flex items-center justify-center gap-2.5 text-xs sm:text-sm text-muted-foreground">
             <Lock className="h-4 w-4 text-green-600 shrink-0" />
-            <span>100% In-Browser Privacy</span>
+            <span>Private processing options</span>
           </div>
           <div className="flex items-center justify-center gap-2.5 text-xs sm:text-sm text-muted-foreground">
             <Zap className="h-4 w-4 text-amber-500 shrink-0" />

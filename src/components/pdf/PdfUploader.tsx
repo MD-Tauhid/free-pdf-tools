@@ -119,7 +119,7 @@ export function PdfUploader({
 
       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-1">
         <ShieldCheck className="h-4 w-4 text-green-600" />
-        <span>100% In-Browser Execution: Your files never leave this computer</span>
+        <span>PDF files are processed in this browser and are not uploaded</span>
       </div>
     </div>
   );

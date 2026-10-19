@@ -94,17 +94,16 @@ This document outlines the phased roadmap for building **Free PDF Tools**, a fas
 ---
 
 ### Phase 6: Word-to-PDF Conversion Worker
-- **Status:** Pending
+- **Status:** Implementation complete; container/LibreOffice integration verification pending
 - **Objectives:**
-  - Create isolated TypeScript conversion microservice in `worker/conversion/`.
-  - Author reproducible `Dockerfile` installing LibreOffice headless, essential fonts, and Node.js.
-  - Build conversion job runner with input validation, timeout protection (30s limit), bounded concurrency (max 2 parallel jobs), and safe temporary directory isolation.
-  - Provide Next.js API client route (`src/app/api/convert/route.ts`) interfacing with the worker.
-  - Implement automatic file cleanup on both success and failure.
+  - [x] Create a standalone TypeScript conversion worker and Dockerfile with LibreOffice Writer and fonts.
+  - [x] Validate DOCX MIME/archive structure; reject macro-enabled, encrypted, path-traversing, malformed, or oversized archives.
+  - [x] Bound uploads, archive expansion, per-process concurrency, output size, and conversion time; use isolated per-job temporary directories and remove them after success or failure.
+  - [x] Add an authenticated Next.js API proxy and browser upload/download flow, with explicit server-side processing disclosures.
 - **Acceptance Criteria:**
-  - DOCX files convert reliably to PDF preserving formatting and layout.
-  - Worker automatically rejects malicious or oversized payloads.
-  - Zero disk leaks or lingering temp files after conversion jobs.
+  - [x] API tests verify upload limits, worker authentication forwarding, sanitized download names, and bounded PDF response handling.
+  - [x] Worker tests reject malformed, path-traversing, macro-enabled, and expanded-size-over-limit archives.
+  - [ ] Build and run the Docker image with LibreOffice, then convert a representative DOCX and verify PDF output and temporary-directory cleanup. The current environment has no running Docker daemon or host LibreOffice.
 
 ---
 

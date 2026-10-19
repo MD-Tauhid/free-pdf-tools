@@ -13,17 +13,22 @@ const faqs: FAQItem[] = [
   {
     question: "Are my files uploaded or saved to any server?",
     answer:
-      "No. All PDF viewing, text editing, merging, splitting, compressing, and annotations happen entirely client-side inside your browser using WebAssembly and HTML5 Canvas. Your documents never leave your local device, ensuring complete confidentiality for contracts, financial records, and private documents.",
+      "PDF viewing, editing, and organization tools process files in your browser. Word-to-PDF conversion is different: your DOCX is uploaded to the configured conversion service, processed in an isolated temporary directory, and removed after the job. Avoid uploading documents unless you are comfortable with that processing.",
   },
   {
     question: "Can I really edit existing text inside a PDF?",
     answer:
-      "Yes. Our PDF Editor features a dedicated text extraction and layout inspection engine. You can click on any existing line or block of text, modify its content in the properties sidebar, preview the changes live on canvas, and export the updated PDF with clean font embedding and baseline alignment.",
+      "The editor can visually cover and replace one supported horizontal text span with a solid-color patch and Helvetica text. The original text remains in the PDF and may be recovered, so this is not secure redaction. Rotated text, reflow, and complex backgrounds are not supported.",
   },
   {
     question: "How does PDF to Word conversion work?",
     answer:
       "Our PDF to Word pipeline inspects glyph positions, line heights, and font weights to intelligently reconstruct structured paragraphs, headings, and lists into a standard Microsoft Word (.docx) document, ready for editing in Word, LibreOffice, or Google Docs.",
+  },
+  {
+    question: "How does Word-to-PDF conversion handle my document?",
+    answer:
+      "The DOCX file is uploaded to an isolated LibreOffice worker for conversion, then removed from its temporary job directory. Uploads are limited to 20 MB and conversion to 30 seconds. Do not upload sensitive documents unless you accept this server-side processing.",
   },
   {
     question: "Is there any limit on file size or number of pages?",
@@ -60,7 +65,7 @@ export function FAQSection() {
             Frequently Asked Questions
           </h2>
           <p className="mt-3 text-base text-muted-foreground">
-            Clear answers about our in-browser technology, privacy guarantees, and supported features.
+            Clear answers about in-browser tools, server-side conversion, privacy, and supported features.
           </p>
         </div>
 

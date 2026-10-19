@@ -88,7 +88,7 @@ export function MobileNavigation({ isOpen, onClose }: MobileNavigationProps) {
               className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               <ShieldCheck className="h-4 w-4 text-green-600" />
-              Privacy & In-Browser Guarantee
+              Privacy & File Handling
             </Link>
             <Link
               href="/about"

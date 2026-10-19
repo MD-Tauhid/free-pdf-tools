@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { toolsConfig } from "@/config/tools";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { FileText, UploadCloud, Shield, CheckCircle2 } from "lucide-react";
+import { WordToPdfConverter } from "@/components/word-to-pdf/WordToPdfConverter";
+import { FileText, Shield, CheckCircle2 } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Convert Word to PDF Online Free — Fast DOCX to PDF",
   description:
-    "Convert Microsoft Word DOCX documents to standard PDF files with preserved formatting, fonts, and layout.",
+    "Convert DOCX documents to PDF using an isolated LibreOffice worker. Files are uploaded for temporary processing and removed after conversion.",
 };
 
 export default function WordToPdfPage() {
@@ -27,28 +26,10 @@ export default function WordToPdfPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border-2 border-dashed border-border bg-card p-10 text-center shadow-sm">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 mb-4">
-          <UploadCloud className="h-8 w-8" />
-        </div>
-        <h3 className="text-xl font-semibold text-foreground">
-          Select a Word Document (.docx)
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-          Convert your Word document into a high-fidelity PDF file.
-        </p>
-
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <label className={cn(buttonVariants({ variant: "default" }), "cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-medium")}>
-            Select DOCX File
-            <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="sr-only" />
-          </label>
-        </div>
-
-        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Shield className="h-4 w-4 text-green-600" />
-          <span>Automatic ephemeral file deletion on conversion completion</span>
-        </div>
+      <WordToPdfConverter />
+      <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <Shield className="h-4 w-4 text-green-600" />
+        <span>Maximum upload: 20 MB. Conversion may take up to 30 seconds.</span>
       </div>
 
       <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-12">
@@ -58,8 +39,8 @@ export default function WordToPdfPage() {
           </h2>
           <ol className="space-y-3 text-sm text-muted-foreground list-decimal list-inside leading-relaxed">
             <li>Upload your DOCX document.</li>
-            <li>Our isolated worker processes document layout and font metrics.</li>
-            <li>Generates a print-ready, standardized PDF.</li>
+            <li>An isolated LibreOffice worker renders the document.</li>
+            <li>The converted PDF is returned for download; layout may vary by document.</li>
             <li>Download the converted document immediately.</li>
           </ol>
         </div>

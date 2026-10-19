@@ -17,15 +17,15 @@ export function FeaturesSection() {
     },
     {
       icon: ShieldCheck,
-      title: "100% In-Browser Privacy",
+      title: "Privacy-conscious processing",
       description:
-        "Your private documents, financial statements, and contracts are processed locally inside your web browser. Nothing is ever sent to a remote database or cloud server.",
+        "PDF tools run locally in your browser. Word-to-PDF conversion sends DOCX files to an isolated worker for temporary processing and removes them when the job ends.",
     },
     {
       icon: FileType,
       title: "Bidirectional Word Conversion",
       description:
-        "Convert PDF documents into clean, structured Microsoft Word (.docx) files, or convert DOCX documents to crisp PDFs with exact typography and margins.",
+        "Convert PDF documents into Word (.docx) files, or render DOCX documents to PDF with LibreOffice. Layout and font fidelity can vary by document.",
     },
     {
       icon: Cpu,
@@ -58,8 +58,9 @@ export function FeaturesSection() {
             Why Professionals Choose Free PDF Tools
           </h2>
           <p className="mt-4 text-base text-muted-foreground leading-relaxed">
-            Most online PDF tools upload your sensitive files to private cloud servers and charge monthly fees.
-            We designed a modern, client-side document workstation that respects your privacy.
+            Most of our PDF tools process documents locally in your browser.
+            Word-to-PDF conversion is an exception: the DOCX is sent to an isolated
+            worker for temporary processing and is removed when the job ends.
           </p>
         </div>
 
@@ -97,14 +98,14 @@ export function FeaturesSection() {
                   Your Privacy is Non-Negotiable
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
-                  Unlike traditional cloud converters, our tools run the PDF rendering and transformation engine
-                  locally on your machine using JavaScript and WebAssembly. Your files never touch our servers.
+                  PDF editing and organization stay in your browser. DOCX-to-PDF conversion
+                  uses an isolated worker; see the privacy policy for details about file handling.
                 </p>
               </div>
             </div>
             <div className="shrink-0">
               <div className="rounded-lg bg-background px-4 py-2 border text-xs font-semibold text-foreground shadow-sm">
-                Strict Zero-Data Policy
+                Temporary conversion processing
               </div>
             </div>
           </div>

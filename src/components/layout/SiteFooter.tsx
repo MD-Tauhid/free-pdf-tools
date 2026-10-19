@@ -20,13 +20,13 @@ export function SiteFooter() {
               <span className="text-foreground">{siteConfig.name}</span>
             </Link>
             <p className="max-w-sm text-sm text-muted-foreground leading-relaxed">
-              Every tool on this platform operates completely inside your web browser.
-              Your confidential documents are never uploaded to a remote server,
-              guaranteeing zero data leakage and 100% privacy.
+              Most PDF tools process files locally in your browser. Word-to-PDF
+              conversion uploads DOCX files to an isolated worker for temporary
+              processing; those files are removed when the job ends.
             </p>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-green-600" />
-              <span>Zero-Storage Guarantee — Free Forever, No Registration</span>
+              <span>Temporary conversion files are not retained after processing</span>
             </div>
           </div>
 

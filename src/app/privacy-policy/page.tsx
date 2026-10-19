@@ -3,9 +3,9 @@ import { siteConfig } from "@/config/site";
 import { ShieldCheck, Lock, EyeOff, ServerOff } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — In-Browser Document Processing Guarantee",
+  title: "Privacy Policy — Document Processing and File Handling",
   description:
-    "Our privacy policy details our strict in-browser processing guarantee. We never store, read, or upload your PDF documents.",
+    "Learn which PDF tools process files in your browser and how DOCX uploads are handled by the temporary Word-to-PDF conversion worker.",
 };
 
 export default function PrivacyPolicyPage() {
@@ -27,13 +27,13 @@ export default function PrivacyPolicyPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
         <div className="rounded-xl border bg-card p-5 text-center">
           <ServerOff className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-          <h3 className="font-semibold text-sm text-foreground">Zero Server Uploads</h3>
-          <p className="text-xs text-muted-foreground mt-1">PDFs are processed in browser memory via WebAssembly.</p>
+          <h3 className="font-semibold text-sm text-foreground">Browser-based PDF tools</h3>
+          <p className="text-xs text-muted-foreground mt-1">PDF editor files are processed in browser memory.</p>
         </div>
         <div className="rounded-xl border bg-card p-5 text-center">
           <Lock className="h-6 w-6 text-green-600 mx-auto mb-2" />
-          <h3 className="font-semibold text-sm text-foreground">No File Storage</h3>
-          <p className="text-xs text-muted-foreground mt-1">No database or file retention exists on our systems.</p>
+          <h3 className="font-semibold text-sm text-foreground">Temporary DOCX processing</h3>
+          <p className="text-xs text-muted-foreground mt-1">Conversion job directories are removed after each job.</p>
         </div>
         <div className="rounded-xl border bg-card p-5 text-center">
           <EyeOff className="h-6 w-6 text-purple-600 mx-auto mb-2" />
@@ -46,22 +46,21 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2 className="text-lg font-bold text-foreground">1. Our Core Privacy Philosophy</h2>
           <p>
-            At {siteConfig.name}, we believe that document processing tools should never compromise user privacy.
-            Unlike traditional web applications that transmit your private contracts, medical documents, and tax filings
-            to centralized cloud servers, our architecture leverages modern browser capabilities to execute PDF parsing,
-            rendering, text editing, page reordering, merging, and splitting directly inside your device’s sandbox.
+            At {siteConfig.name}, we aim to minimize document transfers. PDF editor files are parsed, rendered, and
+            edited in your browser. Word-to-PDF conversion requires a server-side LibreOffice worker, so DOCX files
+            selected for that tool leave your device for temporary processing.
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-bold text-foreground">2. Document Data Handling</h2>
           <p>
-            When you select or drop a PDF into {siteConfig.name}:
+            When you use a browser-based PDF tool:
           </p>
           <ul className="list-disc list-inside space-y-1.5 mt-2">
             <li>The document binary is read into your browser&apos;s local memory (RAM).</li>
             <li>All rendering and manipulation is performed by client-side WebAssembly and JavaScript libraries.</li>
-            <li>No copies or fragments of your files are ever transmitted to or stored on our servers.</li>
+            <li>Those browser-based PDF operations do not upload the document to the conversion worker.</li>
             <li>When you close or reload the browser tab, the document data in memory is instantly discarded.</li>
           </ul>
         </section>
@@ -69,13 +68,14 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2 className="text-lg font-bold text-foreground">3. Conversion Microservice Isolation</h2>
           <p>
-            For select conversions that require desktop-class rendering engines (such as Word to PDF):
+            For Word-to-PDF conversion:
           </p>
           <ul className="list-disc list-inside space-y-1.5 mt-2">
-            <li>Files are transmitted over encrypted TLS connections to an isolated ephemeral worker container.</li>
-            <li>The conversion is executed in a temporary directory dedicated solely to that single request.</li>
-            <li>Immediately following conversion completion (or failure), the temporary directory and all associated files are permanently deleted.</li>
-            <li>No persistent storage, backups, or logs containing document contents are maintained.</li>
+            <li>The DOCX file is uploaded to the application, then forwarded to an authenticated, isolated worker. Deployments should use TLS for untrusted network hops and keep the worker on a private network.</li>
+            <li>Each conversion runs in a unique temporary directory. Uploads are limited to 20 MB, archive expansion to 100 MB, concurrent jobs to two per worker, and conversion time to 30 seconds.</li>
+            <li>The worker removes the temporary directory after successful conversion or failure. The converted PDF is returned to your browser and is not retained by the worker.</li>
+            <li>The service does not intentionally log document contents. Hosting and network providers may process request metadata under their own policies.</li>
+            <li>Do not upload documents unless you are comfortable with this server-side conversion.</li>
           </ul>
         </section>
 

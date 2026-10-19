@@ -28,17 +28,17 @@ export default function AboutPage() {
           <p>
             For years, editing or converting a PDF meant navigating confusing paywalls, downloading bulky desktop trial
             software, or handing over sensitive personal documents to third-party servers. We set out to build an
-            alternative: an intuitive, full-featured PDF editing and conversion suite that runs entirely inside the user&apos;s
-            browser, keeping documents safe, private, and lightning fast.
+            alternative: a straightforward PDF workstation. Most PDF tools run in the browser, while DOCX-to-PDF conversion
+            uses an isolated worker with temporary job files.
           </p>
         </section>
 
         <section>
           <h2 className="text-lg font-bold text-foreground">Engineered for Privacy & Zero Server Cost</h2>
           <p>
-            By leveraging modern web standards—such as WebAssembly, HTML5 Canvas, and specialized open-source PDF parsing
-            engines—our tools perform heavy document calculations on your own machine. This allows us to offer 100% free
-            unlimited usage without requiring expensive server storage or cloud compute clusters.
+            PDF editing and organization use modern browser technologies such as WebAssembly and HTML5 Canvas. Word-to-PDF
+            conversion is an exception that uses a temporary server-side LibreOffice worker. The worker stores job files
+            only in a per-request temporary directory, which is removed after the conversion finishes.
           </p>
         </section>
 
@@ -46,7 +46,7 @@ export default function AboutPage() {
           <div className="rounded-xl border bg-card p-5">
             <ShieldCheck className="h-5 w-5 text-green-600 mb-2" />
             <h3 className="font-semibold text-sm text-foreground">Complete Privacy</h3>
-            <p className="text-xs text-muted-foreground mt-1">Zero cloud uploads for standard editing and organizational tasks.</p>
+            <p className="text-xs text-muted-foreground mt-1">PDF editing and organization run locally; DOCX conversion uses an isolated temporary worker.</p>
           </div>
           <div className="rounded-xl border bg-card p-5">
             <Sparkles className="h-5 w-5 text-blue-600 mb-2" />

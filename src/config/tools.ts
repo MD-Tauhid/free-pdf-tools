@@ -52,18 +52,18 @@ export const toolsConfig: ToolConfig[] = [
   {
     id: "word-to-pdf",
     title: "Word to PDF",
-    shortDescription: "Convert DOCX documents to standard PDF files with exact formatting.",
+    shortDescription: "Convert DOCX documents to PDF using an isolated LibreOffice worker.",
     description:
-      "Transform your Microsoft Word (.docx) documents into clean, universal PDF files with preserved formatting, fonts, and page layouts.",
+      "Convert Microsoft Word (.docx) documents to PDF using LibreOffice. Files are uploaded to an isolated worker for temporary processing; layout and font fidelity can vary.",
     href: "/word-to-pdf",
     iconName: "FileText",
     category: "convert",
     popular: true,
     features: [
-      "Exact font rendering and page margins",
-      "Retains tables, bullet points, and headers",
-      "Isolated sandboxed conversion worker",
-      "Automatic ephemeral file deletion",
+      "LibreOffice document rendering",
+      "20 MB upload and 30-second conversion limits",
+      "Isolated worker with per-job temporary directories",
+      "Temporary files removed after processing",
     ],
   },
   {
