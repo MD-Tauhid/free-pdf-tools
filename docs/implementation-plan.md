@@ -38,7 +38,7 @@ This document outlines the phased roadmap for building **Free PDF Tools**, a fas
 ---
 
 ### Phase 3: PDF Upload & Client-Side Viewer
-- **Status:** Pending
+- **Status:** Complete (Verified)
 - **Objectives:**
   - Implement client-side PDF loading (`PdfUploader`, `PdfViewer`, `PdfPage`, `PdfThumbnail`, `PdfToolbar`).
   - Integrate `pdfjs-dist` worker safely with Next.js Turbopack client-side rendering.
@@ -46,9 +46,13 @@ This document outlines the phased roadmap for building **Free PDF Tools**, a fas
   - Validate file size, MIME type, encrypted/corrupted document handling.
   - Keep document processing strictly in-browser memory without unnecessary server uploads.
 - **Acceptance Criteria:**
-  - Valid PDFs load quickly with rendering fidelity.
-  - Thumbnails and page navigation update reliably.
-  - Encrypted, damaged, or oversized files trigger informative user notifications.
+  - [x] Users can open and view valid PDFs in-browser.
+  - [x] Page count, direct page jumping, and prev/next navigation work.
+  - [x] Zoom in/out, fit to width, fit to page, and 90° rotation work.
+  - [x] Thumbnails sidebar with crisp previews and page indicators.
+  - [x] Validation catches empty, oversized (>50MB), non-PDF, and encrypted documents.
+  - [x] Zero server uploads: 100% in-browser memory and Canvas rendering.
+  - [x] Automated unit tests pass (`npm test`).
 
 ---
 

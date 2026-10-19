@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { toolsConfig } from "@/config/tools";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { FileEdit, UploadCloud, Shield, CheckCircle2 } from "lucide-react";
+import { PdfViewerWrapper } from "@/components/pdf/PdfViewerWrapper";
+import { FileEdit, CheckCircle2 } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Free Online PDF Editor — Edit Existing Text & Annotate",
@@ -14,71 +13,52 @@ export default function PdfEditorPage() {
   const tool = toolsConfig.find((t) => t.id === "pdf-editor")!;
 
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
-      {/* Tool Header */}
-      <div className="text-center mb-10">
-        <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 mb-4">
-          <FileEdit className="h-6 w-6" />
-        </div>
-        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-foreground">
-          {tool.title}
-        </h1>
-        <p className="mt-3 max-w-2xl mx-auto text-base text-muted-foreground leading-relaxed">
-          {tool.description}
-        </p>
+    <div className="flex flex-col flex-1">
+      {/* Viewer Workspace */}
+      <div className="flex-1">
+        <PdfViewerWrapper />
       </div>
 
-      {/* Editor Upload / Workspace Container (Phases 3 & 4 will render EditorWorkspace here) */}
-      <div className="rounded-2xl border-2 border-dashed border-border bg-card p-10 text-center shadow-sm">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 mb-4">
-          <UploadCloud className="h-8 w-8" />
-        </div>
-        <h3 className="text-xl font-semibold text-foreground">
-          Select a PDF to Begin Editing
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-          Drag and drop your file here, or choose from your computer. Files remain on your device and are never uploaded.
-        </p>
-
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <label className={cn(buttonVariants({ variant: "default" }), "cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-medium")}>
-            Browse Files
-            <input type="file" accept="application/pdf" className="sr-only" />
-          </label>
-        </div>
-
-        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Shield className="h-4 w-4 text-green-600" />
-          <span>Client-Side Processing: Zero server uploads</span>
-        </div>
-      </div>
-
-      {/* Features & Instructions */}
-      <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-12">
-        <div>
-          <h2 className="text-xl font-bold text-foreground mb-4">
-            How to Edit a PDF Document
+      {/* SEO & Instructional Documentation Section below the workspace */}
+      <div className="container mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8 border-t mt-8">
+        <div className="text-center mb-10">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 mb-4">
+            <FileEdit className="h-6 w-6" />
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            {tool.title} — How It Works
           </h2>
-          <ol className="space-y-3 text-sm text-muted-foreground list-decimal list-inside leading-relaxed">
-            <li><strong className="text-foreground">Upload your PDF:</strong> Choose your document or drag it directly onto the canvas.</li>
-            <li><strong className="text-foreground">Select existing text:</strong> Click on any line or paragraph to edit the underlying words.</li>
-            <li><strong className="text-foreground">Format and customize:</strong> Adjust fonts, sizes, colors, add drawings, signatures, or highlights.</li>
-            <li><strong className="text-foreground">Download the updated PDF:</strong> Export your modified file instantly without watermarks.</li>
-          </ol>
+          <p className="mt-2 text-sm text-muted-foreground max-w-2xl mx-auto">
+            {tool.description}
+          </p>
         </div>
 
-        <div>
-          <h2 className="text-xl font-bold text-foreground mb-4">
-            Editor Capabilities
-          </h2>
-          <ul className="space-y-2.5 text-sm text-muted-foreground">
-            {tool.features.map((feat, i) => (
-              <li key={i} className="flex items-start gap-2.5">
-                <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-                <span>{feat}</span>
-              </li>
-            ))}
-          </ul>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div>
+            <h3 className="text-lg font-bold text-foreground mb-3">
+              Step-by-Step Instructions
+            </h3>
+            <ol className="space-y-3 text-sm text-muted-foreground list-decimal list-inside leading-relaxed">
+              <li><strong className="text-foreground">Open your PDF:</strong> Drag & drop your file into the box above or click Browse.</li>
+              <li><strong className="text-foreground">Navigate pages:</strong> Use the left thumbnail strip or page controls in the toolbar.</li>
+              <li><strong className="text-foreground">Adjust view:</strong> Zoom in, zoom out, fit to width, or rotate orientation as needed.</li>
+              <li><strong className="text-foreground">Export:</strong> Download your unmodified or processed PDF with zero server uploads.</li>
+            </ol>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-bold text-foreground mb-3">
+              Features & Guarantees
+            </h3>
+            <ul className="space-y-2.5 text-sm text-muted-foreground">
+              {tool.features.map((feat, i) => (
+                <li key={i} className="flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                  <span>{feat}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
     </div>
