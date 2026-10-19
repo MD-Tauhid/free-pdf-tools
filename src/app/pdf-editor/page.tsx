@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { toolsConfig } from "@/config/tools";
-import { PdfViewerWrapper } from "@/components/pdf/PdfViewerWrapper";
+import { EditorWorkspaceWrapper } from "@/components/editor/EditorWorkspaceWrapper";
 import { FileEdit, CheckCircle2 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Free Online PDF Editor — Edit Existing Text & Annotate",
+  title: "Free Online PDF Annotator — Add Text, Highlights & Signatures",
   description:
-    "Edit existing PDF text, add text, draw shapes, highlight, and sign PDF documents online for free. 100% private in-browser editing.",
+    "Add text boxes, drawings, highlights, signatures, and image stamps to PDFs online. Existing PDF text remains unchanged; processing stays in your browser.",
 };
 
 export default function PdfEditorPage() {
@@ -14,12 +14,12 @@ export default function PdfEditorPage() {
 
   return (
     <div className="flex flex-col flex-1">
-      {/* Viewer Workspace */}
+      {/* Editor Workspace */}
       <div className="flex-1">
-        <PdfViewerWrapper />
+        <EditorWorkspaceWrapper />
       </div>
 
-      {/* SEO & Instructional Documentation Section below the workspace */}
+      {/* SEO & Instructional Documentation Section */}
       <div className="container mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8 border-t mt-8">
         <div className="text-center mb-10">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 mb-4">
@@ -39,16 +39,32 @@ export default function PdfEditorPage() {
               Step-by-Step Instructions
             </h3>
             <ol className="space-y-3 text-sm text-muted-foreground list-decimal list-inside leading-relaxed">
-              <li><strong className="text-foreground">Open your PDF:</strong> Drag & drop your file into the box above or click Browse.</li>
-              <li><strong className="text-foreground">Navigate pages:</strong> Use the left thumbnail strip or page controls in the toolbar.</li>
-              <li><strong className="text-foreground">Adjust view:</strong> Zoom in, zoom out, fit to width, or rotate orientation as needed.</li>
-              <li><strong className="text-foreground">Export:</strong> Download your unmodified or processed PDF with zero server uploads.</li>
+              <li>
+                <strong className="text-foreground">Open your PDF:</strong> Drag
+                &amp; drop your file or click Browse.
+              </li>
+              <li>
+                <strong className="text-foreground">Select tool:</strong> Choose
+                Select, Add Text, Draw, Highlight, or Signature from the toolbar.
+              </li>
+              <li>
+                <strong className="text-foreground">Edit:</strong> Click on the
+                page to add text boxes or select existing text spans.
+              </li>
+              <li>
+                <strong className="text-foreground">Undo/Redo:</strong> Use
+                Ctrl+Z / Ctrl+Y or the toolbar buttons.
+              </li>
+              <li>
+                <strong className="text-foreground">Download:</strong> Click
+                &ldquo;Download PDF&rdquo; to save your work.
+              </li>
             </ol>
           </div>
 
           <div>
             <h3 className="text-lg font-bold text-foreground mb-3">
-              Features & Guarantees
+              Features &amp; Guarantees
             </h3>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
               {tool.features.map((feat, i) => (

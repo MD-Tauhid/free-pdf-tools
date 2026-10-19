@@ -33,7 +33,9 @@ export async function loadPdfDocument(
 
   try {
     const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(data),
+      // PDF.js may transfer its input buffer to the worker; keep the editor's
+      // source buffer intact for non-destructive export.
+      data: new Uint8Array(data.slice(0)),
       cMapUrl: "/cmaps/",
       cMapPacked: true,
       standardFontDataUrl: "/standard_fonts/",

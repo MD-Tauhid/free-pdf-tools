@@ -41,8 +41,9 @@ export function PdfPage({
           onPageLoaded(page);
         }
 
-        // Viewport with scale and rotation
-        const viewport = page.getViewport({ scale, rotation });
+        // Preserve the PDF's own page rotation and apply the viewer adjustment.
+        const effectiveRotation = ((page.rotate + rotation) % 360 + 360) % 360;
+        const viewport = page.getViewport({ scale, rotation: effectiveRotation });
         setPageSize({ width: viewport.width, height: viewport.height });
 
         const canvas = canvasRef.current;

@@ -69,7 +69,7 @@ export function HeroSection() {
 
         {/* Subtitle */}
         <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-muted-foreground leading-relaxed">
-          Edit existing PDF text, convert between Word and PDF, merge, split, and compress
+          Annotate PDFs, convert between Word and PDF, merge, split, and compress
           documents directly inside your web browser. No accounts, no subscriptions, and no file uploads.
         </p>
 

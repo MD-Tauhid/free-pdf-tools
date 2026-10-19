@@ -35,11 +35,14 @@ export function PdfThumbnail({
         const page = await pdfDoc.getPage(pageNumber);
         if (isCancelled) return;
 
-        // Base thumbnail scale
-        const unscaledViewport = page.getViewport({ scale: 1.0, rotation });
+        const effectiveRotation = ((page.rotate + rotation) % 360 + 360) % 360;
+        const unscaledViewport = page.getViewport({
+          scale: 1.0,
+          rotation: effectiveRotation,
+        });
         const targetWidth = 110;
         const scale = targetWidth / unscaledViewport.width;
-        const viewport = page.getViewport({ scale, rotation });
+        const viewport = page.getViewport({ scale, rotation: effectiveRotation });
 
         const canvas = canvasRef.current;
         if (!canvas || isCancelled) return;

@@ -24,7 +24,7 @@ export const siteConfig: SiteConfig = {
   name: "Free PDF Tools",
   shortName: "FreePDF",
   description:
-    "100% free, private, and secure online PDF tools. Edit existing PDF text, convert between Word and PDF, merge, split, compress, and organize documents right in your browser.",
+    "100% free, private, and secure online PDF tools. Annotate PDFs, convert between Word and PDF, merge, split, compress, and organize documents right in your browser.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
   ogImage: "/og.png",
   links: {
@@ -41,7 +41,7 @@ export const siteConfig: SiteConfig = {
   categories: [
     {
       title: "Edit & Annotate",
-      description: "Direct in-browser text modification, drawing, notes, and signatures",
+      description: "Add text overlays, highlights, drawings, and signatures to PDFs",
       tools: ["pdf-editor"],
     },
     {

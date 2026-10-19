@@ -57,19 +57,23 @@ This document outlines the phased roadmap for building **Free PDF Tools**, a fas
 ---
 
 ### Phase 4: PDF Editor Foundation
-- **Status:** Pending
+- **Status:** Complete (Verified)
 - **Objectives:**
   - Define strongly typed Zustand editor store (`src/stores/pdf-editor-store.ts`).
-  - Build editor workspace layout: left thumbnail sidebar, central canvas with zoom/pan, top toolbar, right properties sidebar.
-  - Implement coordinate transformation system between screen space, canvas space, and PDF points (72 DPI).
+  - Build editor workspace layout: left thumbnail sidebar, central canvas with zoom/scroll, top toolbar, right properties sidebar.
+  - Implement coordinate transformation system between screen space, canvas space, and PDF points (72 DPI), including PDF.js viewport rotation.
   - Extract text positions via PDF.js `getTextContent()` into selectable bounding boxes (`TextSelectionLayer`).
-  - Support new annotations: text boxes, freehand drawing, highlights, image stamps, and signatures.
+  - Support new annotations: text boxes, freehand drawing, highlights, PNG/JPEG image stamps, and drawn signatures.
   - Implement undo/redo history stack (`usePdfHistory`).
   - Implement export service (`export-pdf.ts`) using `pdf-lib`.
 - **Acceptance Criteria:**
-  - All annotation tools work and render accurately.
-  - Canvas coordinates match exported PDF coordinates across all zoom levels.
-  - Exported PDFs retain all added annotations.
+  - [x] Annotation tools create visible overlays; image placements are converted to an exportable PNG/JPEG representation.
+  - [x] PDF-space positions are converted through the PDF.js viewport, including rotated views and zoom changes.
+  - [x] Export from the original in-memory PDF applies text, drawing, highlight, signature, and image overlays without accumulating edits.
+  - [x] Undo/redo tracks supported annotation add, update, and delete operations.
+  - [x] PDF export and rotated-coordinate tests pass (`npm test`); TypeScript and ESLint pass.
+  - [x] Existing text selection is inspection only; editing source glyphs is explicitly deferred to Phase 5.
+  - [x] Structural page operations (delete/reorder/permanent rotation) remain in Phase 8; the current rotate control changes the viewer only.
 
 ---
 

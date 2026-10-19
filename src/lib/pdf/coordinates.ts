@@ -20,6 +20,59 @@ export interface RectBounds {
   height: number;
 }
 
+export interface PdfViewportTransform {
+  scale: number;
+  convertToViewportPoint(x: number, y: number): number[];
+  convertToPdfPoint(x: number, y: number): number[];
+}
+
+export function pdfPointToViewport(
+  point: PdfPoint,
+  viewport: PdfViewportTransform
+): ScreenPoint {
+  const [x, y] = viewport.convertToViewportPoint(point.x, point.y) as [
+    number,
+    number,
+  ];
+  return { x, y };
+}
+
+export function viewportPointToPdf(
+  point: ScreenPoint,
+  viewport: PdfViewportTransform
+): PdfPoint {
+  const [x, y] = viewport.convertToPdfPoint(point.x, point.y) as [
+    number,
+    number,
+  ];
+  return { x, y };
+}
+
+export function pdfRectToViewportRect(
+  rect: RectBounds,
+  viewport: PdfViewportTransform
+): RectBounds {
+  const corners = [
+    pdfPointToViewport({ x: rect.x, y: rect.y }, viewport),
+    pdfPointToViewport({ x: rect.x + rect.width, y: rect.y }, viewport),
+    pdfPointToViewport({ x: rect.x, y: rect.y + rect.height }, viewport),
+    pdfPointToViewport(
+      { x: rect.x + rect.width, y: rect.y + rect.height },
+      viewport
+    ),
+  ];
+  const xs = corners.map(({ x }) => x);
+  const ys = corners.map(({ y }) => y);
+  const left = Math.min(...xs);
+  const top = Math.min(...ys);
+  return {
+    x: left,
+    y: top,
+    width: Math.max(...xs) - left,
+    height: Math.max(...ys) - top,
+  };
+}
+
 /**
  * Converts PDF coordinates (points, bottom-left origin) to Screen coordinates (pixels, top-left origin).
  */

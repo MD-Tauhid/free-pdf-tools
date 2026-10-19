@@ -53,10 +53,12 @@ export function PdfViewer({ initialFile, className }: PdfViewerProps) {
   const handleFitWidth = React.useCallback(() => {
     if (!containerRef.current || !pageDimensions[currentPage]) return;
     const containerWidth = containerRef.current.clientWidth;
-    const pageWidth = pageDimensions[currentPage].width;
+    const dimensions = pageDimensions[currentPage];
+    const rotated = rotation % 180 !== 0;
+    const pageWidth = rotated ? dimensions.height : dimensions.width;
     const newScale = calculateFitWidthScale(containerWidth, pageWidth, sidebarOpen ? 64 : 48);
     setZoom(newScale);
-  }, [currentPage, pageDimensions, sidebarOpen, setZoom]);
+  }, [currentPage, pageDimensions, rotation, sidebarOpen, setZoom]);
 
   // Fit to Page calculation
   const handleFitPage = React.useCallback(() => {
@@ -64,15 +66,16 @@ export function PdfViewer({ initialFile, className }: PdfViewerProps) {
     const containerWidth = containerRef.current.clientWidth;
     const containerHeight = containerRef.current.clientHeight;
     const dims = pageDimensions[currentPage];
+    const rotated = rotation % 180 !== 0;
     const newScale = calculateFitPageScale(
       containerWidth,
       containerHeight,
-      dims.width,
-      dims.height,
+      rotated ? dims.height : dims.width,
+      rotated ? dims.width : dims.height,
       sidebarOpen ? 96 : 64
     );
     setZoom(newScale);
-  }, [currentPage, pageDimensions, sidebarOpen, setZoom]);
+  }, [currentPage, pageDimensions, rotation, sidebarOpen, setZoom]);
 
   // Download handler for current document buffer
   const handleDownload = React.useCallback(() => {
@@ -146,6 +149,11 @@ export function PdfViewer({ initialFile, className }: PdfViewerProps) {
         onReset={resetDocument}
         onDownload={handleDownload}
       />
+      {error && (
+        <div role="alert" className="border-b bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {error.message}
+        </div>
+      )}
 
       {/* Main Workspace: Thumbnails Sidebar + Center Canvas */}
       <div className="flex flex-1 overflow-hidden relative">

@@ -15,19 +15,19 @@ export const toolsConfig: ToolConfig[] = [
   {
     id: "pdf-editor",
     title: "PDF Editor",
-    shortDescription: "Edit existing text, add annotations, draw, and sign PDF documents online.",
+    shortDescription: "Add text, highlights, drawings, signatures, and images to PDFs online.",
     description:
-      "A complete Word-like editing workspace. Select existing text to update, insert new typography, highlight critical passages, draw freehand shapes, and place custom signatures.",
+      "Inspect selectable text spans, then add text overlays, highlights, freehand drawings, signatures, and images. Existing PDF text glyphs are not modified.",
     href: "/pdf-editor",
     iconName: "FileEdit",
     badge: "Popular",
     category: "edit",
     popular: true,
     features: [
-      "Edit existing PDF text with live preview",
-      "Highlight, underline, and draw freehand shapes",
-      "Add digital signatures and custom image stamps",
-      "Zero server uploads: 100% private in-browser processing",
+      "Inspect existing text and its position without changing original glyphs",
+      "Add and format text boxes, highlights, and freehand drawings",
+      "Place drawn signatures and PNG/JPEG image stamps",
+      "Export annotations privately in your browser",
     ],
   },
   {

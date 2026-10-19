@@ -49,6 +49,7 @@ export function usePdfDocument(): UsePdfDocumentReturn {
   const [loading, setLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<PdfLoadError | null>(null);
   const [pageDimensions, setPageDimensions] = React.useState<Record<number, PdfPageDimensions>>({});
+  const pdfDocRef = React.useRef<PDFDocumentProxy | null>(null);
 
   // Clean up proxy on unmount
   React.useEffect(() => {
@@ -56,6 +57,7 @@ export function usePdfDocument(): UsePdfDocumentReturn {
       if (pdfDoc) {
         pdfDoc.cleanup().catch(() => {});
       }
+      pdfDocRef.current = null;
     };
   }, [pdfDoc]);
 
@@ -103,6 +105,7 @@ export function usePdfDocument(): UsePdfDocumentReturn {
         const firstPage = await doc.getPage(1);
         const dims = getPageDimensions(firstPage);
 
+        pdfDocRef.current = doc;
         setPdfDoc(doc);
         setArrayBuffer(buffer);
         setFileName(name);
@@ -165,22 +168,44 @@ export function usePdfDocument(): UsePdfDocumentReturn {
     (page: number) => {
       if (page >= 1 && page <= pageCount) {
         setCurrentPage(page);
+        if (!pageDimensions[page] && pdfDoc) {
+          void pdfDoc
+            .getPage(page)
+            .then((pageProxy) => {
+              if (pdfDocRef.current !== pdfDoc) return;
+              const dimensions = getPageDimensions(pageProxy);
+              setPageDimensions((previous) => ({
+                ...previous,
+                [page]: dimensions,
+              }));
+              setError(null);
+            })
+            .catch((error: unknown) => {
+              if (pdfDocRef.current !== pdfDoc) return;
+              console.error(`Failed to inspect PDF page ${page}:`, error);
+              setError({
+                code: "RENDER_FAILED",
+                message: `Page ${page} could not be inspected.`,
+                details: error instanceof Error ? error.message : String(error),
+              });
+            });
+        }
       }
     },
-    [pageCount]
+    [pageCount, pageDimensions, pdfDoc]
   );
 
   const nextPage = React.useCallback(() => {
     if (currentPage < pageCount) {
-      setCurrentPage((prev) => prev + 1);
+      goToPage(currentPage + 1);
     }
-  }, [currentPage, pageCount]);
+  }, [currentPage, goToPage, pageCount]);
 
   const prevPage = React.useCallback(() => {
     if (currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
+      goToPage(currentPage - 1);
     }
-  }, [currentPage]);
+  }, [currentPage, goToPage]);
 
   const zoomIn = React.useCallback(() => {
     setFitMode("custom");

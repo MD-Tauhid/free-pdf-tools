@@ -140,9 +140,27 @@ function screenToPdf(screenX: number, screenY: number, pageHeight: number, scale
 }
 ```
 
+The editor uses PDF.js `PageViewport` conversion methods for live editor overlays,
+including the viewer's current zoom and quarter-turn rotation. Annotation
+positions and paths are stored in PDF user-space points; device-pixel-ratio
+scaling is applied only to the rendered canvas and never to saved geometry.
+
+## 5. Editor Foundation and Export
+
+`pdf-editor-store.ts` owns annotation state and bounded undo/redo history. The
+PDF.js document remains in `usePdfDocument`; the store contains only editor
+tools, selections, and overlays. Text boxes, freehand paths, rectangular
+highlights, drawn signatures, and PNG/JPEG stamps are applied to a fresh copy
+of the in-memory source by `export-pdf.ts` using `pdf-lib`.
+
+Existing PDF text spans can be selected and inspected, but are not changed by
+these overlays. Reordering/deleting pages and permanent page rotation are
+separate page-operation work; the current rotation control changes the viewer
+orientation only. Arbitrary existing-text replacement remains in Phase 5.
+
 ---
 
-## 5. Conversion Worker Microservice
+## 6. Conversion Worker Microservice
 
 To convert Microsoft Word (`.docx`) documents to PDF with zero third-party license costs, the system uses headless LibreOffice:
 
@@ -163,7 +181,7 @@ Worker Components:
 
 ---
 
-## 6. Zero-Cost Hosting & Deployment Topology
+## 7. Zero-Cost Hosting & Deployment Topology
 
 | Component | Target Platform | Cost Tier | Role |
 | :--- | :--- | :--- | :--- |

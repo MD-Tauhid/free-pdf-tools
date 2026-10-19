@@ -11,9 +11,9 @@ export function FeaturesSection() {
   const features = [
     {
       icon: Edit3,
-      title: "Direct Existing Text Editing",
+      title: "PDF Text Overlays & Annotations",
       description:
-        "Unlike basic tools that merely place sticky notes on top of PDFs, our editor enables in-place editing of existing text blocks with live preview, font matching, and baseline alignment.",
+        "Add text boxes, highlights, drawings, signatures, and images to PDFs. Existing text can be selected for inspection, but its original glyphs are not changed.",
     },
     {
       icon: ShieldCheck,
