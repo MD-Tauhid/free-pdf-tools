@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import ./test/register.mjs --experimental-strip-types test/phase3-validation-and-coords.test.ts && node --import ./test/register.mjs --experimental-strip-types test/phase4-editor-export.test.ts && node --import ./test/register.mjs --experimental-strip-types test/phase5-text-editing.test.ts && node --experimental-strip-types test/phase6-conversion-worker.test.mjs && node --import ./test/register.mjs --experimental-strip-types test/phase7-pdf-to-word.test.ts"
+    "test": "node --import ./test/register.mjs --experimental-strip-types test/phase3-validation-and-coords.test.ts && node --import ./test/register.mjs --experimental-strip-types test/phase4-editor-export.test.ts && node --import ./test/register.mjs --experimental-strip-types test/phase5-text-editing.test.ts && node --experimental-strip-types test/phase6-conversion-worker.test.mjs && node --import ./test/register.mjs --experimental-strip-types test/phase7-pdf-to-word.test.ts && node --import ./test/register.mjs --experimental-strip-types test/phase8-pdf-operations.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

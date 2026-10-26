@@ -89,7 +89,7 @@ export const toolsConfig: ToolConfig[] = [
     title: "Split PDF",
     shortDescription: "Extract specific pages or separate a document into independent PDFs.",
     description:
-      "Select custom page ranges or extract individual pages from a large PDF document. Download single pages or bundled zip archives effortlessly.",
+      "Select custom page ranges or extract individual pages from a large PDF document. Download single pages or bundled archives effortlessly.",
     href: "/split-pdf",
     iconName: "Split",
     category: "organize",
@@ -116,6 +116,74 @@ export const toolsConfig: ToolConfig[] = [
       "Maintains clean text sharpness",
       "Shows instant before & after file size comparison",
       "No file retention on any server",
+    ],
+  },
+  {
+    id: "rotate-pdf",
+    title: "Rotate PDF",
+    shortDescription: "Permanently rotate individual or all pages in a PDF document.",
+    description:
+      "Rotate pages clockwise or counter-clockwise by 90, 180, or 270 degrees. Save the new orientation directly into the PDF structure.",
+    href: "/rotate-pdf",
+    iconName: "RotateCw",
+    category: "organize",
+    popular: false,
+    features: [
+      "Per-page or document-wide rotation",
+      "90°, 180°, and 270° orientation support",
+      "Interactive visual rotation feedback",
+      "100% client-side processing",
+    ],
+  },
+  {
+    id: "organize-pdf",
+    title: "Organize PDF",
+    shortDescription: "Reorder, rearrange, and delete pages from a PDF.",
+    description:
+      "Sort pages in your preferred sequence and eliminate unwanted pages with a clean, visual card layout.",
+    href: "/organize-pdf",
+    iconName: "Layers",
+    category: "organize",
+    popular: false,
+    features: [
+      "Drag or step reordering of any page",
+      "One-click page deletion with undo restore",
+      "Preserves all fonts and original vectors",
+      "Completely private in-browser tool",
+    ],
+  },
+  {
+    id: "watermark-pdf",
+    title: "Watermark PDF",
+    shortDescription: "Add text stamps, security notices, and confidentiality watermarks.",
+    description:
+      "Embed diagonal or horizontal text watermarks across all or selected pages with customizable font size, opacity, and color.",
+    href: "/watermark-pdf",
+    iconName: "Stamp",
+    category: "edit",
+    popular: false,
+    features: [
+      "Custom text, font size, opacity, and rotation",
+      "Odd, even, or all page targeting",
+      "Live visual preview before export",
+      "Vector typography embedded directly",
+    ],
+  },
+  {
+    id: "pdf-to-image",
+    title: "PDF to Image",
+    shortDescription: "Convert and render PDF pages into crisp PNG or JPEG images.",
+    description:
+      "Extract each page of a PDF as a high-resolution PNG or JPEG image. Download individual pages or the entire document gallery.",
+    href: "/pdf-to-image",
+    iconName: "FileType",
+    category: "convert",
+    popular: false,
+    features: [
+      "High-resolution PNG and JPEG rendering",
+      "Selectable 1x, 1.5x, and 2x retina scales",
+      "Individual page image downloads",
+      "Zero server uploads or latency",
     ],
   },
 ];

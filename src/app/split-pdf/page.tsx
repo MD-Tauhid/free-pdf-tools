@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { toolsConfig } from "@/config/tools";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Split, UploadCloud, Shield, CheckCircle2 } from "lucide-react";
+import { SplitPdfTool } from "@/components/operations/SplitPdfTool";
+import { Split, Shield, CheckCircle2 } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Split PDF Files Online Free — Extract Pages",
@@ -27,28 +26,11 @@ export default function SplitPdfPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border-2 border-dashed border-border bg-card p-10 text-center shadow-sm">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 mb-4">
-          <UploadCloud className="h-8 w-8" />
-        </div>
-        <h3 className="text-xl font-semibold text-foreground">
-          Select a PDF to Split
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-          Extract single pages or custom ranges (e.g. 1-3, 5, 8-10).
-        </p>
+      <SplitPdfTool />
 
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <label className={cn(buttonVariants({ variant: "default" }), "cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-medium")}>
-            Select PDF File
-            <input type="file" accept="application/pdf" className="sr-only" />
-          </label>
-        </div>
-
-        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Shield className="h-4 w-4 text-green-600" />
-          <span>Local Page Extraction: Completely secure</span>
-        </div>
+      <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <Shield className="h-4 w-4 text-green-600" />
+        <span>Local Page Extraction: Completely secure and client-side</span>
       </div>
 
       <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-12">
@@ -57,9 +39,9 @@ export default function SplitPdfPage() {
             How to Split a PDF
           </h2>
           <ol className="space-y-3 text-sm text-muted-foreground list-decimal list-inside leading-relaxed">
-            <li>Upload the PDF you wish to divide.</li>
-            <li>Define the page range or select individual page thumbnails.</li>
-            <li>Choose whether to extract one combined PDF or multiple separate files.</li>
+            <li>Select the PDF you wish to divide.</li>
+            <li>Type custom page ranges (e.g. 1-3, 5) or click individual page number badges.</li>
+            <li>Choose whether to combine extracted pages or save them as individual files.</li>
             <li>Download your extracted document(s).</li>
           </ol>
         </div>

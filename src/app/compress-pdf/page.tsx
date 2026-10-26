@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { toolsConfig } from "@/config/tools";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Minimize2, UploadCloud, Shield, CheckCircle2 } from "lucide-react";
+import { CompressPdfTool } from "@/components/operations/CompressPdfTool";
+import { Minimize2, Shield, CheckCircle2 } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Compress PDF Online Free — Reduce File Size",
   description:
-    "Compress PDF files online for free to reduce file size while maintaining text and visual clarity. 100% private in-browser compression.",
+    "Compress PDF documents to smaller file sizes directly in your browser. Optimize PDF streams without uploading files to any external server.",
 };
 
 export default function CompressPdfPage() {
@@ -27,40 +26,23 @@ export default function CompressPdfPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border-2 border-dashed border-border bg-card p-10 text-center shadow-sm">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 mb-4">
-          <UploadCloud className="h-8 w-8" />
-        </div>
-        <h3 className="text-xl font-semibold text-foreground">
-          Select a PDF to Compress
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-          Reduce PDF file size for easier sharing and email attachments.
-        </p>
+      <CompressPdfTool />
 
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <label className={cn(buttonVariants({ variant: "default" }), "cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-medium")}>
-            Select PDF File
-            <input type="file" accept="application/pdf" className="sr-only" />
-          </label>
-        </div>
-
-        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Shield className="h-4 w-4 text-green-600" />
-          <span>Local Optimization: Never uploaded to any server</span>
-        </div>
+      <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <Shield className="h-4 w-4 text-green-600" />
+        <span>Instant client-side stream optimization. No document retention.</span>
       </div>
 
       <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-12">
         <div>
           <h2 className="text-xl font-bold text-foreground mb-4">
-            How Compression Works
+            How PDF Compression Works
           </h2>
           <ol className="space-y-3 text-sm text-muted-foreground list-decimal list-inside leading-relaxed">
-            <li>Select your PDF document.</li>
-            <li>Our optimizer strips redundant font descriptors and unneeded metadata.</li>
-            <li>Re-encodes content streams into compact binary representations.</li>
-            <li>Download the streamlined, lightweight PDF file.</li>
+            <li>Select the PDF file you need to downsize.</li>
+            <li>Click &ldquo;Compress PDF Now&rdquo; to streamline cross-reference streams.</li>
+            <li>View your before-and-after file size savings.</li>
+            <li>Download your optimized PDF.</li>
           </ol>
         </div>
 
