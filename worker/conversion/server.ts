@@ -65,8 +65,12 @@ async function readRequestBody(request: IncomingMessage): Promise<Buffer> {
 
 function runLibreOffice(inputPath: string, outputDirectory: string, profile: string) {
   return new Promise<void>((resolve, reject) => {
+    const libreOfficeBin =
+      process.env.LIBREOFFICE_PATH ||
+      (process.platform === "win32" ? "soffice" : "libreoffice");
+
     const child = spawn(
-      "libreoffice",
+      libreOfficeBin,
       [
         "--headless",
         "--nologo",

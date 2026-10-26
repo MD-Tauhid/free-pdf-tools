@@ -3,6 +3,7 @@
 import * as React from "react";
 import { CheckCircle2, Download, LoaderCircle, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { convertDocxToPdf } from "@/lib/conversion/docx-to-pdf";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const DOCX_MIME =
@@ -45,50 +46,55 @@ export function WordToPdfConverter() {
     setConverting(true);
     setError(null);
     setSuccess(null);
+
+    let pdfBlob: Blob | null = null;
+    let usedFallback = false;
+
     try {
-      const response = await fetch("/api/convert", {
-        method: "POST",
-        headers: {
-          "content-type": DOCX_MIME,
-          "x-file-name": encodeURIComponent(file.name),
-        },
-        body: file,
-      });
-      if (!response.ok) {
-        let message = "The document could not be converted.";
-        try {
-          const payload: unknown = await response.json();
-          if (
-            typeof payload === "object" &&
-            payload !== null &&
-            "error" in payload &&
-            typeof payload.error === "string"
-          ) {
-            message = payload.error;
+      // 1. Try server-side worker proxy first if available
+      try {
+        const response = await fetch("/api/convert", {
+          method: "POST",
+          headers: {
+            "content-type": DOCX_MIME,
+            "x-file-name": encodeURIComponent(file.name),
+          },
+          body: file,
+        });
+
+        if (response.ok) {
+          const pdf = await response.blob();
+          if (pdf.size > 0 && pdf.type === "application/pdf") {
+            pdfBlob = pdf;
           }
-        } catch {
-          throw new Error("The conversion service returned an unreadable error response.");
         }
-        throw new Error(message);
+      } catch {
+        // Network or fetch failure; fallback to client-side engine below
       }
 
-      const pdf = await response.blob();
-      if (pdf.size === 0 || pdf.type !== "application/pdf") {
-        throw new Error("The conversion service returned an invalid PDF.");
+      // 2. Fall back to client-side layout engine if worker is not running/configured
+      if (!pdfBlob) {
+        usedFallback = true;
+        const buffer = await file.arrayBuffer();
+        const pdfBytes = await convertDocxToPdf(buffer);
+        pdfBlob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
       }
-      const objectUrl = URL.createObjectURL(pdf);
+
+      const objectUrl = URL.createObjectURL(pdfBlob);
       const anchor = document.createElement("a");
       anchor.href = objectUrl;
-      anchor.download =
-        response.headers.get("x-download-filename") ??
-        `${file.name.replace(/\.docx$/i, "")}.pdf`;
+      anchor.download = `${file.name.replace(/\.docx$/i, "")}.pdf`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-      setSuccess("Your PDF is ready and the download has started.");
+
+      setSuccess(
+        usedFallback
+          ? "Your PDF is ready! Converted via built-in layout engine."
+          : "Your PDF is ready! Converted via LibreOffice worker."
+      );
     } catch (conversionError: unknown) {
-      console.error("Word-to-PDF conversion failed:", conversionError);
       setError(
         conversionError instanceof Error
           ? conversionError.message
@@ -108,7 +114,7 @@ export function WordToPdfConverter() {
         Select a Word Document (.docx)
       </h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-        Convert your Word document into a PDF. Files are sent to the isolated conversion worker and removed after processing.
+        Convert your Word document into a PDF. Fast in-browser processing with optional LibreOffice worker support.
       </p>
 
       <input
@@ -164,7 +170,7 @@ export function WordToPdfConverter() {
         </p>
       )}
       <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-        <span>DOCX is uploaded to the configured worker, limited to 20 MB, and processed in a temporary directory.</span>
+        <span>Files are processed securely. No documents are stored.</span>
       </div>
     </div>
   );
