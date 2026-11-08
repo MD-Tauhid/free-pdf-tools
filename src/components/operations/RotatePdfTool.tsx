@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { validatePdfFile, validatePdfMagicBytes } from "@/lib/validation/file-validation";
 import { rotatePdfPages } from "@/lib/pdf/page-operations";
 import { PDFDocument } from "pdf-lib";
+import type { PDFDocumentProxy } from "pdfjs-dist";
+import { loadPdfDocument } from "@/lib/pdf/load-pdf";
+import { PagePreviewCard } from "@/components/operations/PagePreviewCard";
 import {
   RotateCw,
   RotateCcw,
@@ -26,6 +29,7 @@ function formatBytes(bytes: number): string {
 export function RotatePdfTool() {
   const [file, setFile] = React.useState<File | null>(null);
   const [pdfData, setPdfData] = React.useState<Uint8Array | null>(null);
+  const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = React.useState<number>(0);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -42,8 +46,9 @@ export function RotatePdfTool() {
       if (downloadUrl) {
         URL.revokeObjectURL(downloadUrl);
       }
+      pdfDoc?.destroy();
     };
-  }, [downloadUrl]);
+  }, [downloadUrl, pdfDoc]);
 
   const handleFileChange = async (selectedFile: File | null) => {
     if (!selectedFile) return;
@@ -76,8 +81,11 @@ export function RotatePdfTool() {
         initialRotations[i] = doc.getPage(i - 1).getRotation().angle;
       }
 
+      const jsDoc = await loadPdfDocument(buffer);
+
       setFile(selectedFile);
       setPdfData(data);
+      setPdfDoc(jsDoc);
       setTotalPages(count);
       setPageRotations(initialRotations);
     } catch (err: unknown) {
@@ -163,6 +171,8 @@ export function RotatePdfTool() {
     if (downloadUrl) {
       URL.revokeObjectURL(downloadUrl);
     }
+    pdfDoc?.destroy();
+    setPdfDoc(null);
     setFile(null);
     setPdfData(null);
     setTotalPages(0);
@@ -303,21 +313,12 @@ export function RotatePdfTool() {
                     </span>
                   </div>
 
-                  {/* Visual Page Representation */}
-                  <div className="relative flex h-36 w-28 items-center justify-center rounded-lg border bg-muted/40 overflow-hidden shadow-2xs">
-                    <div
-                      style={{
-                        transform: `rotate(${angle}deg)`,
-                        transition: "transform 0.25s ease-in-out",
-                      }}
-                      className="flex flex-col items-center justify-center p-2 text-center"
-                    >
-                      <FileText className="h-10 w-10 text-blue-600/70 mb-1" />
-                      <span className="text-[10px] font-bold text-foreground">
-                        P. {pageNum}
-                      </span>
-                    </div>
-                  </div>
+                  {/* Visual Page Representation with live rendered PDF thumbnail */}
+                  <PagePreviewCard
+                    pdfDoc={pdfDoc}
+                    pageNumber={pageNum}
+                    rotation={angle}
+                  />
 
                   {/* Individual Page Rotate Controls */}
                   <div className="flex items-center gap-1.5 w-full">

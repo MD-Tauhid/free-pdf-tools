@@ -102,6 +102,21 @@ export function PdfToImageTool() {
     setProgress(null);
   };
 
+  const handleDownloadAll = () => {
+    renderedImages.forEach((img, index) => {
+      setTimeout(() => {
+        const ext = imageFormat === "image/png" ? "png" : "jpg";
+        const filename = `${file?.name.replace(/\.pdf$/i, "") || "document"}_page_${img.pageNumber}.${ext}`;
+        const a = document.createElement("a");
+        a.href = img.dataUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }, index * 200);
+    });
+  };
+
   return (
     <div className="w-full space-y-6">
       {!file ? (
@@ -269,11 +284,23 @@ export function PdfToImageTool() {
           {/* Rendered Images Gallery */}
           {renderedImages.length > 0 && (
             <div className="border-t pt-6 space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                   Rendered Images ({renderedImages.length} Pages)
                 </h4>
+                {renderedImages.length > 1 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleDownloadAll}
+                    className="gap-1.5 text-xs text-blue-600 border-blue-200 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-950/50"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Download All ({renderedImages.length} Images)
+                  </Button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">

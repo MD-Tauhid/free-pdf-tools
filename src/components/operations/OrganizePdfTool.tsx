@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { validatePdfFile, validatePdfMagicBytes } from "@/lib/validation/file-validation";
 import { reorderAndDeletePages } from "@/lib/pdf/page-operations";
 import { PDFDocument } from "pdf-lib";
+import type { PDFDocumentProxy } from "pdfjs-dist";
+import { loadPdfDocument } from "@/lib/pdf/load-pdf";
+import { PagePreviewCard } from "@/components/operations/PagePreviewCard";
 import {
   UploadCloud,
   ArrowLeft,
@@ -34,6 +37,7 @@ interface PageItem {
 export function OrganizePdfTool() {
   const [file, setFile] = React.useState<File | null>(null);
   const [pdfData, setPdfData] = React.useState<Uint8Array | null>(null);
+  const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [initialPages, setInitialPages] = React.useState<number>(0);
   const [pages, setPages] = React.useState<PageItem[]>([]);
   const [deletedPages, setDeletedPages] = React.useState<number[]>([]);
@@ -50,8 +54,9 @@ export function OrganizePdfTool() {
       if (downloadUrl) {
         URL.revokeObjectURL(downloadUrl);
       }
+      pdfDoc?.destroy();
     };
-  }, [downloadUrl]);
+  }, [downloadUrl, pdfDoc]);
 
   const handleFileChange = async (selectedFile: File | null) => {
     if (!selectedFile) return;
@@ -84,8 +89,11 @@ export function OrganizePdfTool() {
         originalPageNumber: i + 1,
       }));
 
+      const jsDoc = await loadPdfDocument(buffer);
+
       setFile(selectedFile);
       setPdfData(data);
+      setPdfDoc(jsDoc);
       setInitialPages(count);
       setPages(items);
       setDeletedPages([]);
@@ -182,6 +190,8 @@ export function OrganizePdfTool() {
     if (downloadUrl) {
       URL.revokeObjectURL(downloadUrl);
     }
+    pdfDoc?.destroy();
+    setPdfDoc(null);
     setFile(null);
     setPdfData(null);
     setInitialPages(0);
@@ -318,15 +328,11 @@ export function OrganizePdfTool() {
                   </span>
                 </div>
 
-                {/* Visual Page Representation */}
-                <div className="flex h-36 w-28 items-center justify-center rounded-lg border bg-muted/40 shadow-2xs">
-                  <div className="flex flex-col items-center justify-center p-2 text-center">
-                    <FileText className="h-10 w-10 text-blue-600/70 mb-1" />
-                    <span className="text-[11px] font-bold text-foreground">
-                      Original P. {item.originalPageNumber}
-                    </span>
-                  </div>
-                </div>
+                {/* Visual Page Representation with live rendered PDF thumbnail */}
+                <PagePreviewCard
+                  pdfDoc={pdfDoc}
+                  pageNumber={item.originalPageNumber}
+                />
 
                 {/* Move & Delete Controls */}
                 <div className="flex items-center justify-between w-full gap-1">
