@@ -3,13 +3,14 @@
 import * as React from "react";
 import type { PageViewport } from "pdfjs-dist";
 import { usePdfEditorStore } from "@/stores/pdf-editor-store";
-import type {
-  DrawAnnotation,
-  EditorAnnotation,
-  PdfPoint,
-  SignatureAnnotation,
-  TextReplacement,
-  TextAnnotation,
+import {
+  type DrawAnnotation,
+  type EditorAnnotation,
+  type PdfPoint,
+  type SignatureAnnotation,
+  type TextReplacement,
+  type TextAnnotation,
+  getCssFontFamily,
 } from "@/types/editor";
 import { cn } from "@/lib/utils";
 import { pdfPointToViewport, pdfRectToViewportRect } from "@/lib/pdf/coordinates";
@@ -100,7 +101,7 @@ function TextAnnotationOverlay({
         textDecoration: annotation.underline ? "underline" : "none",
         opacity: annotation.opacity,
         backgroundColor: annotation.backgroundColor ?? "transparent",
-        fontFamily: annotation.fontFamily,
+        fontFamily: getCssFontFamily(annotation.fontFamily),
         lineHeight: 1.3,
       }}
     >
@@ -210,6 +211,9 @@ export function AnnotationLayer({
               backgroundColor: replacement.backgroundColor,
               color: replacement.color,
               fontSize: replacement.fontSize * viewport.scale,
+              fontFamily: getCssFontFamily(replacement.fontFamily),
+              fontWeight: replacement.bold ? "bold" : "normal",
+              fontStyle: replacement.italic ? "italic" : "normal",
               lineHeight: 1,
             }}
           >

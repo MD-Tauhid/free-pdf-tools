@@ -17,7 +17,7 @@ Because open-source web environments do not possess full PostScript-level layout
 ### 2.2 Font Subsetting
 - **The Issue:** To minimize file size, PDF generators rarely embed complete font files. Instead, they embed "font subsets" containing only the exact glyphs used in the original document. For instance, if the letter "Z" was never used in the original document, the embedded font does not have glyph data or character metrics for "Z".
 - **The Impact:** Direct in-place editing of text strings using the document's original embedded font will fail or display garbled characters if the user types letters not present in the subset.
-- **Current implementation:** Replacement text is rendered in standard Helvetica. Custom font embedding and exact source-font matching are not implemented.
+- **Current implementation:** Replacement text supports user-selectable standard fonts (Helvetica / Arial, Times New Roman, Courier New, Georgia, Verdana, Trebuchet MS, Garamond) with Bold and Italic weights. Custom TrueType/OpenType font file embedding and exact original subset synthesis are not implemented.
 
 ### 2.3 Background Occlusion & Artifacts
 - **The Issue:** Because existing glyphs are baked into the PDF content stream, modifying text requires redacting (masking) the original glyphs before drawing the new text.
@@ -46,13 +46,13 @@ Existing text can be changed only through a deliberately limited **visual cover-
 [Live visual cover and replacement preview]
         │
         ▼ (3. Export via pdf-lib from the untouched source bytes)
-[Original PDF] ──> [Solid color rectangle] ──> [Helvetica replacement text] ──> [Exported PDF]
+[Original PDF] ──> [Solid color rectangle] ──> [Styled replacement text (Helvetica/Times/Courier)] ──> [Exported PDF]
 ```
 
 ### Key Principles of This Approach:
 1. **Not secure redaction**: The original text operators remain in the exported PDF and may be recovered by copying text or inspecting the PDF. Do not use this workflow to conceal sensitive information.
 2. **Manually selected solid cover**: The application cannot detect the source background. Users must choose a matching solid color. Image, gradient, patterned, and vector backgrounds may be visibly damaged by the patch.
-3. **Single horizontal span only**: Rotated spans, line breaks, paragraph reflow, and exact original font matching are unsupported. Helvetica is used for replacement text, and export rejects text that does not fit its fixed-width span or cannot be encoded by Helvetica.
+3. **Single horizontal span only**: Rotated spans, line breaks, and automatic paragraph reflow across the whole page are unsupported. Selectable standard fonts (Helvetica, Times New Roman, Courier) with Bold and Italic styles are supported, and export rejects text that exceeds its fixed-width span or cannot be encoded by standard fonts.
 4. **Non-destructive base**: Preview and export start from the original in-memory PDF so repeated exports do not stack edits. Unaffected original page content is preserved.
 5. **Fallback options**: For complex backgrounds or unsupported text, use regular annotation tools instead. Those annotations do not modify source text.
 

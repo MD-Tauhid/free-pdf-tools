@@ -79,6 +79,23 @@ const exportedBytes = await exportPdfWithAnnotations(
 const exported = await PDFDocument.load(exportedBytes);
 assert.equal(exported.getPageCount(), 1);
 assert.ok(exportedBytes.byteLength > source.byteLength);
+
+// Test export with custom font family and bold/italic styles
+const timesExported = await exportPdfWithAnnotations(
+  source,
+  {},
+  [{ ...replacement("Times"), fontFamily: "TimesRoman", bold: true, italic: true }]
+);
+assert.ok(timesExported.byteLength > source.byteLength);
+
+const courierExported = await exportPdfWithAnnotations(
+  source,
+  {},
+  [{ ...replacement("Code"), fontFamily: "Courier", bold: false, italic: true }]
+);
+assert.ok(courierExported.byteLength > source.byteLength);
+console.log("✓ Export with multiple font families (TimesRoman, Courier) and styles");
+
 await assert.rejects(
   exportPdfWithAnnotations(source, {}, [replacement("A replacement much too long")]),
   /too wide/

@@ -6,10 +6,12 @@ import {
   type PDFPage,
   type RGB,
 } from "pdf-lib";
-import type {
-  EditorAnnotation,
-  PdfPoint,
-  TextReplacement,
+import {
+  type EditorAnnotation,
+  type PdfPoint,
+  type TextReplacement,
+  type PdfFontFamily,
+  PDF_FONT_FAMILIES,
 } from "@/types/editor";
 import {
   assessTextReplacement,
@@ -31,15 +33,58 @@ function parseColor(value: string): RGB {
   return rgb(channels[0], channels[1], channels[2]);
 }
 
+/**
+ * Map a logical font family + style flags to a pdf-lib StandardFonts key.
+ * pdf-lib supports the 14 standard PDF built-in fonts without embedding.
+ */
+function getStandardFontKey(
+  family: PdfFontFamily | string | undefined,
+  bold: boolean,
+  italic: boolean
+): StandardFonts {
+  const norm = (family || "").toLowerCase().replace(/[\s-_]/g, "");
+  // Check mapped option from PDF_FONT_FAMILIES
+  const match = PDF_FONT_FAMILIES.find(
+    (f) =>
+      f.value.toLowerCase() === norm ||
+      f.label.toLowerCase().replace(/[\s-_/]/g, "").includes(norm)
+  );
+
+  const target = match ? match.pdfStandardFont : (
+    norm.includes("times") || norm.includes("georgia") || norm.includes("garamond") || norm.includes("serif")
+      ? "TimesRoman"
+      : norm.includes("courier") || norm.includes("mono")
+      ? "Courier"
+      : "Helvetica"
+  );
+
+  if (target === "TimesRoman") {
+    if (bold && italic) return StandardFonts.TimesRomanBoldItalic;
+    if (bold) return StandardFonts.TimesRomanBold;
+    if (italic) return StandardFonts.TimesRomanItalic;
+    return StandardFonts.TimesRoman;
+  }
+
+  if (target === "Courier") {
+    if (bold && italic) return StandardFonts.CourierBoldOblique;
+    if (bold) return StandardFonts.CourierBold;
+    if (italic) return StandardFonts.CourierOblique;
+    return StandardFonts.Courier;
+  }
+
+  if (bold && italic) return StandardFonts.HelveticaBoldOblique;
+  if (bold) return StandardFonts.HelveticaBold;
+  if (italic) return StandardFonts.HelveticaOblique;
+  return StandardFonts.Helvetica;
+}
+
 function getTextFont(
   pdf: PDFDocument,
   bold: boolean,
-  italic: boolean
+  italic: boolean,
+  family: PdfFontFamily | string = "Helvetica"
 ): Promise<PDFFont> {
-  if (bold && italic) return pdf.embedFont(StandardFonts.HelveticaBoldOblique);
-  if (bold) return pdf.embedFont(StandardFonts.HelveticaBold);
-  if (italic) return pdf.embedFont(StandardFonts.HelveticaOblique);
-  return pdf.embedFont(StandardFonts.Helvetica);
+  return pdf.embedFont(getStandardFontKey(family, bold, italic));
 }
 
 function dataUrlToBytes(dataUrl: string, mimeType: string): Uint8Array {
@@ -86,7 +131,7 @@ async function drawAnnotation(
 ): Promise<void> {
   switch (annotation.type) {
     case "text-box": {
-      const font = await getTextFont(pdf, annotation.bold, annotation.italic);
+      const font = await getTextFont(pdf, annotation.bold, annotation.italic, annotation.fontFamily);
       const { x, y, width, height } = annotation.pdfRect;
       if (annotation.backgroundColor) {
         page.drawRectangle({
@@ -215,7 +260,10 @@ async function applyTextReplacement(
     );
   }
 
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const fontFamily = replacement.fontFamily ?? "Helvetica";
+  const bold = replacement.bold ?? false;
+  const italic = replacement.italic ?? false;
+  const font = await getTextFont(pdf, bold, italic, fontFamily);
   let textWidth: number;
   try {
     textWidth = font.widthOfTextAtSize(
@@ -224,7 +272,7 @@ async function applyTextReplacement(
     );
   } catch {
     throw new Error(
-      "Helvetica cannot encode some characters in this replacement. Use Latin-1 text or add the text as a regular annotation."
+      `${fontFamily} cannot encode some characters in this replacement. Use Latin-1 text or add the text as a regular annotation.`
     );
   }
   const availableWidth = replacement.pdfRect.width - 2;

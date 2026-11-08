@@ -123,8 +123,112 @@ export interface TextReplacement extends AnnotationBase {
   originalText: string;
   replacementText: string;
   fontSize: number;
+  fontFamily?: PdfFontFamily;
+  bold?: boolean;
+  italic?: boolean;
   color: string;
   backgroundColor: string;
+}
+
+// ---------------------------------------------------------------------------
+// Font family definitions
+// ---------------------------------------------------------------------------
+
+/**
+ * Font families available for text editing.
+ * These map to pdf-lib StandardFonts for export and CSS font-family for preview.
+ */
+export type PdfFontFamily =
+  | "Helvetica"
+  | "TimesRoman"
+  | "Courier"
+  | "Georgia"
+  | "Verdana"
+  | "Trebuchet"
+  | "Garamond";
+
+export interface FontFamilyOption {
+  /** Internal key used in state and export. */
+  value: PdfFontFamily;
+  /** Human-readable label shown in the font picker. */
+  label: string;
+  /** Font classification */
+  category: "Sans-Serif" | "Serif" | "Monospace";
+  /** CSS font-family for the live preview on canvas. */
+  cssFamily: string;
+  /** Standard PDF font mapping for export */
+  pdfStandardFont: "Helvetica" | "TimesRoman" | "Courier";
+  /** Description for the user. */
+  description: string;
+}
+
+export const PDF_FONT_FAMILIES: readonly FontFamilyOption[] = [
+  {
+    value: "Helvetica",
+    label: "Arial / Helvetica",
+    category: "Sans-Serif",
+    cssFamily: "Arial, Helvetica, sans-serif",
+    pdfStandardFont: "Helvetica",
+    description: "Standard clean sans-serif (Word default)",
+  },
+  {
+    value: "TimesRoman",
+    label: "Times New Roman",
+    category: "Serif",
+    cssFamily: "'Times New Roman', Times, serif",
+    pdfStandardFont: "TimesRoman",
+    description: "Classic formal serif",
+  },
+  {
+    value: "Courier",
+    label: "Courier New",
+    category: "Monospace",
+    cssFamily: "'Courier New', Courier, monospace",
+    pdfStandardFont: "Courier",
+    description: "Monospaced typewriter font",
+  },
+  {
+    value: "Georgia",
+    label: "Georgia",
+    category: "Serif",
+    cssFamily: "Georgia, 'Times New Roman', serif",
+    pdfStandardFont: "TimesRoman",
+    description: "Elegant high-legibility serif",
+  },
+  {
+    value: "Verdana",
+    label: "Verdana",
+    category: "Sans-Serif",
+    cssFamily: "Verdana, Geneva, sans-serif",
+    pdfStandardFont: "Helvetica",
+    description: "Wide, easily readable sans-serif",
+  },
+  {
+    value: "Trebuchet",
+    label: "Trebuchet MS",
+    category: "Sans-Serif",
+    cssFamily: "'Trebuchet MS', Helvetica, sans-serif",
+    pdfStandardFont: "Helvetica",
+    description: "Modern sans-serif with personality",
+  },
+  {
+    value: "Garamond",
+    label: "Garamond",
+    category: "Serif",
+    cssFamily: "Garamond, 'Times New Roman', serif",
+    pdfStandardFont: "TimesRoman",
+    description: "Traditional publication serif",
+  },
+] as const;
+
+export function getCssFontFamily(family?: string): string {
+  if (!family) return "Arial, Helvetica, sans-serif";
+  const found = PDF_FONT_FAMILIES.find(
+    (f) =>
+      f.value.toLowerCase() === family.toLowerCase() ||
+      f.label.toLowerCase() === family.toLowerCase()
+  );
+  return found ? found.cssFamily : family;
 }
 
 /** An image placed on a page. */

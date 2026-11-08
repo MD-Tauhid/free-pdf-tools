@@ -13,6 +13,7 @@ import { PropertiesSidebar } from "@/components/editor/PropertiesSidebar";
 import { TextSelectionLayer } from "@/components/editor/TextSelectionLayer";
 import { AnnotationLayer } from "@/components/editor/AnnotationLayer";
 import { AnnotationInputLayer } from "@/components/editor/AnnotationInputLayer";
+import { InPlaceTextEditor } from "@/components/editor/InPlaceTextEditor";
 import {
   calculateFitWidthScale,
   calculateFitPageScale,
@@ -512,6 +513,11 @@ export function EditorWorkspace({ className }: EditorWorkspaceProps) {
                   rotation={pageViewport.rotation}
                 />
                 <AnnotationLayer
+                  pageNumber={currentPage}
+                  viewport={pageViewport}
+                />
+                <InPlaceTextEditor
+                  key={`inplace-${currentPage}`}
                   pageNumber={currentPage}
                   viewport={pageViewport}
                 />
