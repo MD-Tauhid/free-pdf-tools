@@ -2,7 +2,6 @@ import { loadPdfDocument } from "@/lib/pdf/load-pdf";
 
 export interface RenderedPageImage {
   pageNumber: number;
-  dataUrl: string;
   blob: Blob;
   width: number;
   height: number;
@@ -31,64 +30,91 @@ export async function renderPdfToImages(
     onProgress,
   } = options;
 
+  if (format !== "image/png" && format !== "image/jpeg") {
+    throw new Error("Image format must be PNG or JPEG.");
+  }
+  if (!Number.isFinite(scale) || scale <= 0 || scale > 4) {
+    throw new Error("Image scale must be greater than 0 and no more than 4.");
+  }
+  if (!Number.isFinite(quality) || quality < 0 || quality > 1) {
+    throw new Error("Image quality must be a number from 0 to 1.");
+  }
+
   const pdf = await loadPdfDocument(pdfData);
   const totalPages = pdf.numPages;
 
   const targetPages = pages
-    ? pages.filter((p) => p >= 1 && p <= totalPages)
+    ? [...new Set(pages)].filter(
+        (page) =>
+          Number.isInteger(page) && page >= 1 && page <= totalPages
+      )
     : Array.from({ length: totalPages }, (_, i) => i + 1);
+
+  if (targetPages.length === 0) {
+    await pdf.loadingTask.destroy();
+    throw new Error("Select at least one valid page to render.");
+  }
 
   const results: RenderedPageImage[] = [];
 
-  for (let i = 0; i < targetPages.length; i += 1) {
-    const pageNum = targetPages[i];
-    onProgress?.(i + 1, targetPages.length);
+  try {
+    for (let i = 0; i < targetPages.length; i += 1) {
+      const pageNum = targetPages[i];
+      onProgress?.(i + 1, targetPages.length);
 
-    const page = await pdf.getPage(pageNum);
-    const viewport = page.getViewport({ scale });
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale });
+      const canvasWidth = Math.floor(viewport.width);
+      const canvasHeight = Math.floor(viewport.height);
+      if (canvasWidth < 1 || canvasHeight < 1) {
+        throw new Error(`Page ${pageNum} has invalid image dimensions at the selected scale.`);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
+      try {
+        const context = canvas.getContext("2d", { alpha: format === "image/png" });
+        if (!context) {
+          throw new Error("Failed to acquire 2D canvas rendering context.");
+        }
 
-    const context = canvas.getContext("2d", { alpha: format === "image/png" });
-    if (!context) {
-      throw new Error("Failed to acquire 2D canvas rendering context.");
+        if (format === "image/jpeg") {
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        await page.render({
+          canvas,
+          canvasContext: context,
+          viewport,
+        }).promise;
+
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(
+            (result) => {
+              if (result) resolve(result);
+              else reject(new Error("Failed to serialize canvas to Blob."));
+            },
+            format,
+            quality
+          );
+        });
+
+        results.push({
+          pageNumber: pageNum,
+          blob,
+          width: canvas.width,
+          height: canvas.height,
+        });
+      } finally {
+        canvas.width = 0;
+        canvas.height = 0;
+        page.cleanup();
+      }
     }
-
-    // Fill with white background for JPEG exports or consistent rendering
-    if (format === "image/jpeg") {
-      context.fillStyle = "#ffffff";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    const renderTask = page.render({
-      canvas,
-      canvasContext: context,
-      viewport,
-    });
-    await renderTask.promise;
-
-    const dataUrl = canvas.toDataURL(format, quality);
-
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (b) => {
-          if (b) resolve(b);
-          else reject(new Error("Failed to serialize canvas to Blob."));
-        },
-        format,
-        quality
-      );
-    });
-
-    results.push({
-      pageNumber: pageNum,
-      dataUrl,
-      blob,
-      width: canvas.width,
-      height: canvas.height,
-    });
+  } finally {
+    await pdf.loadingTask.destroy();
   }
 
   return results;

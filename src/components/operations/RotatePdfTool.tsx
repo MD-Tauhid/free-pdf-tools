@@ -42,13 +42,17 @@ export function RotatePdfTool() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
+    if (downloadUrl) return () => URL.revokeObjectURL(downloadUrl);
+  }, [downloadUrl]);
+
+  React.useEffect(() => {
+    if (!pdfDoc) return;
     return () => {
-      if (downloadUrl) {
-        URL.revokeObjectURL(downloadUrl);
-      }
-      pdfDoc?.destroy();
+      void pdfDoc.loadingTask.destroy().catch((error: unknown) => {
+        console.error("Failed to destroy PDF.js document:", error);
+      });
     };
-  }, [downloadUrl, pdfDoc]);
+  }, [pdfDoc]);
 
   const handleFileChange = async (selectedFile: File | null) => {
     if (!selectedFile) return;
@@ -171,7 +175,6 @@ export function RotatePdfTool() {
     if (downloadUrl) {
       URL.revokeObjectURL(downloadUrl);
     }
-    pdfDoc?.destroy();
     setPdfDoc(null);
     setFile(null);
     setPdfData(null);

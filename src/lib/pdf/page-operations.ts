@@ -40,7 +40,11 @@ export interface CompressResult {
  * Examples: "1-3, 5, 8-10" -> [1, 2, 3, 5, 8, 9, 10]
  */
 export function parsePageRange(rangeStr: string, totalPages: number): number[] {
-  if (!rangeStr.trim()) {
+  if (
+    !rangeStr.trim() ||
+    !Number.isSafeInteger(totalPages) ||
+    totalPages < 1
+  ) {
     return [];
   }
 
@@ -48,23 +52,22 @@ export function parsePageRange(rangeStr: string, totalPages: number): number[] {
   const parts = rangeStr.split(",").map((s) => s.trim()).filter(Boolean);
 
   for (const part of parts) {
-    if (part.includes("-")) {
-      const [startStr, endStr] = part.split("-").map((s) => s.trim());
-      const start = parseInt(startStr, 10);
-      const end = parseInt(endStr, 10);
+    const match = /^(\d+)(?:\s*-\s*(\d+))?$/.exec(part);
+    if (!match) continue;
 
-      if (isNaN(start) || isNaN(end) || start < 1 || end < start) {
-        continue;
-      }
+    const start = Number(match[1]);
+    const end = Number(match[2] ?? match[1]);
+    if (
+      !Number.isSafeInteger(start) ||
+      !Number.isSafeInteger(end) ||
+      start < 1 ||
+      end < start
+    ) {
+      continue;
+    }
 
-      for (let p = start; p <= Math.min(end, totalPages); p += 1) {
-        pages.add(p);
-      }
-    } else {
-      const page = parseInt(part, 10);
-      if (!isNaN(page) && page >= 1 && page <= totalPages) {
-        pages.add(page);
-      }
+    for (let page = start; page <= Math.min(end, totalPages); page += 1) {
+      pages.add(page);
     }
   }
 
@@ -87,8 +90,15 @@ export async function mergePdfDocuments(
     const srcDoc = await PDFDocument.load(file.data, { ignoreEncryption: true });
     const pageCount = srcDoc.getPageCount();
 
+    if (
+      file.pageIndices?.some(
+        (index) => !Number.isInteger(index) || index < 0 || index >= pageCount
+      )
+    ) {
+      throw new Error(`Selected page index is invalid in "${file.name ?? "PDF"}".`);
+    }
     const indicesToCopy = file.pageIndices
-      ? file.pageIndices.filter((idx) => idx >= 0 && idx < pageCount)
+      ? file.pageIndices
       : Array.from({ length: pageCount }, (_, i) => i);
 
     if (indicesToCopy.length > 0) {
@@ -120,9 +130,14 @@ export async function splitPdfDocument(
   const srcDoc = await PDFDocument.load(pdfData, { ignoreEncryption: true });
   const totalPages = srcDoc.getPageCount();
 
-  const validPages = selectedPages1Based.filter(
-    (p) => Number.isInteger(p) && p >= 1 && p <= totalPages
-  );
+  if (
+    selectedPages1Based.some(
+      (page) => !Number.isInteger(page) || page < 1 || page > totalPages
+    )
+  ) {
+    throw new Error("The selected page list contains an invalid page number.");
+  }
+  const validPages = selectedPages1Based;
 
   if (validPages.length === 0) {
     throw new Error("No valid pages were selected for extraction.");
@@ -176,6 +191,19 @@ export async function rotatePdfPages(
   const doc = await PDFDocument.load(pdfData, { ignoreEncryption: true });
   const totalPages = doc.getPageCount();
 
+  const rotations =
+    typeof pageRotations === "number"
+      ? [pageRotations]
+      : Object.entries(pageRotations).map(([page, rotation]) => {
+          if (!Number.isInteger(Number(page)) || Number(page) < 1 || Number(page) > totalPages) {
+            throw new Error(`Invalid page number in rotation settings: ${page}.`);
+          }
+          return rotation;
+        });
+  if (rotations.some((rotation) => !Number.isFinite(rotation) || rotation % 90 !== 0)) {
+    throw new Error("Page rotations must be finite multiples of 90 degrees.");
+  }
+
   for (let pageNum = 1; pageNum <= totalPages; pageNum += 1) {
     const delta =
       typeof pageRotations === "number"
@@ -205,9 +233,14 @@ export async function reorderAndDeletePages(
   const srcDoc = await PDFDocument.load(pdfData, { ignoreEncryption: true });
   const totalPages = srcDoc.getPageCount();
 
-  const validPages = pageOrder1Based.filter(
-    (p) => Number.isInteger(p) && p >= 1 && p <= totalPages
-  );
+  if (
+    pageOrder1Based.some(
+      (page) => !Number.isInteger(page) || page < 1 || page > totalPages
+    )
+  ) {
+    throw new Error("The page order contains an invalid page number.");
+  }
+  const validPages = pageOrder1Based;
 
   if (validPages.length === 0) {
     throw new Error("Resulting document must contain at least one valid page.");
@@ -242,9 +275,8 @@ export async function compressPdfDocument(
 
   const compressedSize = data.byteLength;
   const savings = originalSize - compressedSize;
-  const savingsPercent = originalSize > 0
-    ? Math.max(0, Math.round((savings / originalSize) * 100))
-    : 0;
+  const savingsPercent =
+    originalSize > 0 ? Math.round((savings / originalSize) * 100) : 0;
 
   return {
     data,
@@ -268,7 +300,7 @@ function parseHexColor(hex: string): RGB {
     const b = parseInt(clean.slice(4, 6), 16) / 255;
     return rgb(r, g, b);
   }
-  return rgb(0.5, 0.5, 0.5);
+  throw new Error("Watermark color must be a 3- or 6-digit hexadecimal color.");
 }
 
 function dataUrlToBytes(dataUrl: string): { bytes: Uint8Array; isPng: boolean } {
@@ -300,13 +332,46 @@ export async function addWatermarkToPdf(
   pdfData: ArrayBuffer | Uint8Array,
   options: WatermarkOptions
 ): Promise<Uint8Array> {
+  if (!options.text?.trim() && !options.imageDataUrl) {
+    throw new Error("Either watermark text or an image data URL must be provided.");
+  }
+  if (options.text?.trim() && options.imageDataUrl) {
+    throw new Error("Provide either watermark text or an image, not both.");
+  }
+  if (
+    options.opacity !== undefined &&
+    (!Number.isFinite(options.opacity) ||
+      options.opacity < 0 ||
+      options.opacity > 1)
+  ) {
+    throw new Error("Watermark opacity must be a number from 0 to 1.");
+  }
+  if (
+    options.rotationDegrees !== undefined &&
+    !Number.isFinite(options.rotationDegrees)
+  ) {
+    throw new Error("Watermark rotation must be a finite number.");
+  }
+  if (
+    options.fontSize !== undefined &&
+    (!Number.isFinite(options.fontSize) || options.fontSize <= 0)
+  ) {
+    throw new Error("Watermark font size must be a positive finite number.");
+  }
+  if (
+    options.fontColor !== undefined &&
+    !/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(options.fontColor)
+  ) {
+    throw new Error("Watermark color must be a 3- or 6-digit hexadecimal color.");
+  }
+
   const doc = await PDFDocument.load(pdfData, { ignoreEncryption: true });
   const totalPages = doc.getPageCount();
 
-  const opacity = Math.min(Math.max(options.opacity ?? 0.3, 0.05), 1.0);
+  const opacity = options.opacity ?? 0.3;
   const rotationDegrees = options.rotationDegrees ?? 45;
 
-  if (options.text) {
+  if (options.text?.trim()) {
     const font = await doc.embedFont(StandardFonts.HelveticaBold);
     const color = parseHexColor(options.fontColor || "#64748b");
     const fontSize = options.fontSize || 48;

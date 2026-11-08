@@ -136,14 +136,16 @@ This document outlines the phased roadmap for building **Free PDF Tools**, a fas
   - [x] **Split PDF:** Extract specific page ranges or split into individual page PDFs with interactive visual page selector.
   - [x] **Rotate Pages:** 90/180/270-degree permanent rotation per page or document-wide with live visual transform.
   - [x] **Reorder & Delete Pages:** Visual page organizer with move left/right and deletion with restore capability.
-  - [x] **Compress PDF:** Streamline cross-reference streams and objects using `pdf-lib` with before/after size comparisons.
-  - [x] **Watermark:** Apply custom text/image watermarks with configurable opacity, font size, color, and rotation angle.
+  - [x] **Compress PDF:** Rebuild PDF object streams using `pdf-lib` and report actual size changes; this does not downsample or re-encode embedded images, and output may grow.
+  - [x] **Watermark:** Apply custom text or PNG/JPEG image watermarks with configurable opacity, font size, color, and rotation angle.
   - [x] **PDF to Image:** Export pages to high-resolution PNG or JPEG images with selectable retina scaling.
 - **Acceptance Criteria:**
   - [x] All utility tools operate entirely client-side via `pdf-lib` and `pdfjs-dist`.
   - [x] Fast in-memory execution with zero server uploads or external telemetry.
   - [x] Clean downloads with accurate filenames and format metadata.
-  - [x] Automated unit and integration tests passing (`test/phase8-pdf-operations.test.ts`).
+  - [x] Page-range parsing ignores malformed tokens instead of partially interpreting them; page-selection operations reject invalid page numbers.
+  - [x] PDF-to-image export releases rendered canvases and PDF.js resources after serialization.
+  - [x] Automated unit and integration tests pass (`test/phase8-pdf-operations.test.ts`), including page ordering, page filters, and invalid input cases.
   - [x] Static route generation and production build verified for all 21 routes.
 
 ---

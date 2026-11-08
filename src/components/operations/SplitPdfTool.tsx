@@ -86,6 +86,7 @@ export function SplitPdfTool() {
 
   const handleRangeTextChange = (text: string) => {
     setRangeInput(text);
+    setResults([]);
     if (totalPages > 0) {
       const parsed = parsePageRange(text, totalPages);
       setSelectedPages(parsed);
@@ -93,6 +94,7 @@ export function SplitPdfTool() {
   };
 
   const togglePageSelection = (pageNum: number) => {
+    setResults([]);
     setSelectedPages((prev) => {
       const next = prev.includes(pageNum)
         ? prev.filter((p) => p !== pageNum)
@@ -106,6 +108,7 @@ export function SplitPdfTool() {
 
   const selectAllPages = () => {
     if (totalPages <= 0) return;
+    setResults([]);
     const all = Array.from({ length: totalPages }, (_, i) => i + 1);
     setSelectedPages(all);
     setRangeInput(`1-${totalPages}`);
@@ -121,6 +124,7 @@ export function SplitPdfTool() {
 
     setIsProcessing(true);
     setError(null);
+    setResults([]);
 
     try {
       const splitOutputs: SplitResult[] = await splitPdfDocument(
@@ -231,6 +235,7 @@ export function SplitPdfTool() {
               variant="outline"
               size="sm"
               onClick={handleReset}
+              disabled={isProcessing}
               className="gap-1.5"
             >
               <RotateCcw className="h-4 w-4" />
@@ -249,6 +254,7 @@ export function SplitPdfTool() {
                 type="text"
                 value={rangeInput}
                 onChange={(e) => handleRangeTextChange(e.target.value)}
+                disabled={isProcessing}
                 placeholder="e.g. 1-3, 5, 8"
                 className="w-full rounded-lg border bg-background px-3.5 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -262,6 +268,7 @@ export function SplitPdfTool() {
                   variant="outline"
                   size="sm"
                   onClick={selectAllPages}
+                  disabled={isProcessing}
                   className="text-xs h-7"
                 >
                   Select All ({totalPages})
@@ -273,7 +280,9 @@ export function SplitPdfTool() {
                   onClick={() => {
                     setSelectedPages([]);
                     setRangeInput("");
+                    setResults([]);
                   }}
+                  disabled={isProcessing}
                   className="text-xs h-7"
                 >
                   Clear
@@ -293,7 +302,11 @@ export function SplitPdfTool() {
                     name="splitMode"
                     value="single"
                     checked={splitMode === "single"}
-                    onChange={() => setSplitMode("single")}
+                    onChange={() => {
+                      setSplitMode("single");
+                      setResults([]);
+                    }}
+                    disabled={isProcessing}
                     className="mt-0.5"
                   />
                   <div>
@@ -312,7 +325,11 @@ export function SplitPdfTool() {
                     name="splitMode"
                     value="individual"
                     checked={splitMode === "individual"}
-                    onChange={() => setSplitMode("individual")}
+                    onChange={() => {
+                      setSplitMode("individual");
+                      setResults([]);
+                    }}
+                    disabled={isProcessing}
                     className="mt-0.5"
                   />
                   <div>
@@ -342,6 +359,7 @@ export function SplitPdfTool() {
                   <button
                     key={pageNum}
                     type="button"
+                    disabled={isProcessing}
                     onClick={() => togglePageSelection(pageNum)}
                     className={`h-8 min-w-[34px] px-2 rounded-md text-xs font-medium transition-all ${
                       isSelected

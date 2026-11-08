@@ -23,6 +23,37 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function getCompressionSummary(result: CompressResult): {
+  label: string;
+  message: string;
+} {
+  if (result.compressedSize === result.originalSize) {
+    return {
+      label: "No size change",
+      message: "The optimized PDF has the same size.",
+    };
+  }
+
+  const percentage =
+    result.originalSize > 0
+      ? Math.abs(
+          ((result.originalSize - result.compressedSize) / result.originalSize) *
+            100
+        ).toFixed(1)
+      : "0.0";
+  if (result.compressedSize < result.originalSize) {
+    return {
+      label: `-${percentage}% smaller`,
+      message: "The optimized PDF is smaller.",
+    };
+  }
+
+  return {
+    label: `+${percentage}% larger`,
+    message: "The optimized PDF is larger; the original is unchanged.",
+  };
+}
+
 export function CompressPdfTool() {
   const [file, setFile] = React.useState<File | null>(null);
   const [pdfData, setPdfData] = React.useState<Uint8Array | null>(null);
@@ -34,6 +65,7 @@ export function CompressPdfTool() {
   const [downloadUrl, setDownloadUrl] = React.useState<string | null>(null);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const compressionSummary = result ? getCompressionSummary(result) : null;
 
   React.useEffect(() => {
     return () => {
@@ -132,7 +164,7 @@ export function CompressPdfTool() {
             Select a PDF to Compress
           </h3>
           <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-            Optimize PDF object streams and deduplicate resources locally in your browser.
+            Rebuild the PDF structure locally. Embedded images are not downsampled or re-encoded.
           </p>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -201,7 +233,7 @@ export function CompressPdfTool() {
                   Ready to optimize document
                 </h4>
                 <p className="text-xs text-muted-foreground max-w-md mx-auto mt-1">
-                  Compresses cross-reference tables and streams using modern PDF object stream packaging without altering vector graphics or text legibility.
+                  Repackages PDF objects without changing page content. This cannot reduce embedded image size, and some PDFs may become slightly larger.
                 </p>
               </div>
 
@@ -239,7 +271,7 @@ export function CompressPdfTool() {
 
                 <div className="rounded-xl border bg-green-500/10 border-green-500/30 p-4 text-center">
                   <span className="text-xs text-green-700 dark:text-green-300 uppercase font-semibold">
-                    Compressed Size
+                    Optimized Output Size
                   </span>
                   <p className="text-xl font-bold text-green-700 dark:text-green-400 mt-1">
                     {formatBytes(result.compressedSize)}
@@ -248,10 +280,10 @@ export function CompressPdfTool() {
 
                 <div className="rounded-xl border bg-blue-500/10 border-blue-500/30 p-4 text-center">
                   <span className="text-xs text-blue-700 dark:text-blue-300 uppercase font-semibold">
-                    Reduction
+                    Size Change
                   </span>
                   <p className="text-xl font-bold text-blue-700 dark:text-blue-400 mt-1">
-                    {result.savingsPercent > 0 ? `-${result.savingsPercent}%` : "Already Optimized"}
+                    {compressionSummary?.label}
                   </p>
                 </div>
               </div>
@@ -260,7 +292,9 @@ export function CompressPdfTool() {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t pt-4">
                 <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-                  <span>Streams and structures compressed successfully</span>
+                  <span>
+                    {compressionSummary?.message}
+                  </span>
                 </div>
 
                 {downloadUrl && (

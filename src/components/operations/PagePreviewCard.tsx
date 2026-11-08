@@ -26,7 +26,6 @@ export function PagePreviewCard({
 
   React.useEffect(() => {
     if (!pdfDoc) {
-      setLoading(false);
       return;
     }
 
@@ -133,4 +132,3 @@ export function PagePreviewCard({
     </div>
   );
 }
-

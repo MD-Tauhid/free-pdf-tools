@@ -29,6 +29,7 @@ const PRESET_COLORS = [
   { label: "Blue", value: "#2563eb" },
   { label: "Amber", value: "#d97706" },
 ];
+const MAX_WATERMARK_IMAGE_BYTES = 10 * 1024 * 1024;
 
 export function WatermarkPdfTool() {
   const [file, setFile] = React.useState<File | null>(null);
@@ -38,6 +39,8 @@ export function WatermarkPdfTool() {
 
   // Watermark parameters
   const [watermarkText, setWatermarkText] = React.useState<string>("CONFIDENTIAL");
+  const [watermarkImage, setWatermarkImage] = React.useState<string | null>(null);
+  const [watermarkImageName, setWatermarkImageName] = React.useState<string | null>(null);
   const [fontSize, setFontSize] = React.useState<number>(44);
   const [fontColor, setFontColor] = React.useState<string>("#ef4444");
   const [opacity, setOpacity] = React.useState<number>(0.3);
@@ -49,6 +52,7 @@ export function WatermarkPdfTool() {
   const [downloadSize, setDownloadSize] = React.useState<number>(0);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const watermarkImageInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     return () => {
@@ -96,7 +100,7 @@ export function WatermarkPdfTool() {
   const handleApply = async () => {
     if (!pdfData || !file) return;
 
-    if (!watermarkText.trim()) {
+    if (!watermarkImage && !watermarkText.trim()) {
       setError("Please enter watermark text.");
       return;
     }
@@ -106,7 +110,8 @@ export function WatermarkPdfTool() {
 
     try {
       const watermarkedBytes = await addWatermarkToPdf(pdfData, {
-        text: watermarkText.trim(),
+        text: watermarkImage ? undefined : watermarkText.trim(),
+        imageDataUrl: watermarkImage ?? undefined,
         fontSize,
         fontColor,
         opacity,
@@ -127,6 +132,77 @@ export function WatermarkPdfTool() {
     }
   };
 
+  const handleWatermarkImageChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const input = event.currentTarget;
+    const imageFile = input.files?.[0];
+    input.value = "";
+    if (!imageFile) return;
+
+    const extension = imageFile.name.toLowerCase().split(".").pop();
+    const mimeType =
+      imageFile.type ||
+      (extension === "png"
+        ? "image/png"
+        : extension === "jpg" || extension === "jpeg"
+          ? "image/jpeg"
+          : "");
+    if (mimeType !== "image/png" && mimeType !== "image/jpeg") {
+      setError("Choose a PNG or JPEG image for the watermark.");
+      return;
+    }
+    if (imageFile.size === 0 || imageFile.size > MAX_WATERMARK_IMAGE_BYTES) {
+      setError("Watermark images must be larger than 0 bytes and no more than 10 MB.");
+      return;
+    }
+
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === "string") resolve(reader.result);
+          else reject(new Error("The selected image could not be read."));
+        };
+        reader.onerror = () =>
+          reject(reader.error ?? new Error("The selected image could not be read."));
+        reader.readAsDataURL(imageFile);
+      });
+      const base64Start = dataUrl.indexOf(",") + 1;
+      const header = atob(dataUrl.slice(base64Start, base64Start + 12));
+      const isPng =
+        header.length >= 8 &&
+        header.charCodeAt(0) === 0x89 &&
+        header.slice(1, 4) === "PNG" &&
+        header.charCodeAt(4) === 0x0d &&
+        header.charCodeAt(5) === 0x0a &&
+        header.charCodeAt(6) === 0x1a &&
+        header.charCodeAt(7) === 0x0a;
+      const isJpeg =
+        header.length >= 3 &&
+        header.charCodeAt(0) === 0xff &&
+        header.charCodeAt(1) === 0xd8 &&
+        header.charCodeAt(2) === 0xff;
+      const actualMimeType = isPng
+        ? "image/png"
+        : isJpeg
+          ? "image/jpeg"
+          : null;
+      if (!actualMimeType || (imageFile.type && imageFile.type !== actualMimeType)) {
+        throw new Error("The selected file is not a valid PNG or JPEG image.");
+      }
+      setWatermarkImage(
+        dataUrl.replace(/^data:[^;,]+;/, `data:${actualMimeType};`)
+      );
+      setWatermarkImageName(imageFile.name);
+      setError(null);
+      setDownloadUrl(null);
+    } catch (error: unknown) {
+      console.error("Failed to read watermark image:", error);
+      setError("The selected image could not be read. Choose another PNG or JPEG image.");
+    }
+  };
+
   const handleReset = () => {
     if (downloadUrl) {
       URL.revokeObjectURL(downloadUrl);
@@ -135,6 +211,8 @@ export function WatermarkPdfTool() {
     setPdfData(null);
     setTotalPages(0);
     setError(null);
+    setWatermarkImage(null);
+    setWatermarkImageName(null);
     setDownloadUrl(null);
   };
 
@@ -227,6 +305,7 @@ export function WatermarkPdfTool() {
                 <input
                   type="text"
                   value={watermarkText}
+                  disabled={Boolean(watermarkImage)}
                   onChange={(e) => {
                     setWatermarkText(e.target.value);
                     if (downloadUrl) setDownloadUrl(null);
@@ -243,6 +322,7 @@ export function WatermarkPdfTool() {
                         setWatermarkText(preset);
                         if (downloadUrl) setDownloadUrl(null);
                       }}
+                      disabled={Boolean(watermarkImage)}
                       className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/80"
                     >
                       {preset}
@@ -251,8 +331,54 @@ export function WatermarkPdfTool() {
                 </div>
               </div>
 
+              <div className="space-y-2 rounded-lg border bg-background p-3">
+                <label className="text-sm font-semibold text-foreground block">
+                  Image Watermark (Optional)
+                </label>
+                <input
+                  ref={watermarkImageInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  className="sr-only"
+                  onChange={handleWatermarkImageChange}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => watermarkImageInputRef.current?.click()}
+                    disabled={isProcessing}
+                  >
+                    {watermarkImage ? "Choose Another Image" : "Choose PNG or JPEG"}
+                  </Button>
+                  {watermarkImageName && (
+                    <>
+                      <span className="max-w-56 truncate text-xs text-muted-foreground">
+                        {watermarkImageName}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-destructive hover:underline"
+                        onClick={() => {
+                          setWatermarkImage(null);
+                          setWatermarkImageName(null);
+                          setDownloadUrl(null);
+                        }}
+                      >
+                        Remove image
+                      </button>
+                    </>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Choosing an image uses it instead of the text watermark. Maximum size: 10 MB.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div>
+                {!watermarkImage && (
+                  <div>
                   <label className="text-xs font-semibold text-foreground block mb-1">
                     Font Size ({fontSize} pt)
                   </label>
@@ -267,7 +393,8 @@ export function WatermarkPdfTool() {
                     }}
                     className="w-full"
                   />
-                </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-xs font-semibold text-foreground block mb-1">
@@ -289,7 +416,8 @@ export function WatermarkPdfTool() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                <div>
+                {!watermarkImage && (
+                  <div>
                   <label className="text-xs font-semibold text-foreground block mb-1.5">
                     Color
                   </label>
@@ -307,10 +435,22 @@ export function WatermarkPdfTool() {
                           fontColor === col.value ? "ring-2 ring-offset-2 ring-blue-500 scale-110" : "opacity-80 hover:opacity-100"
                         }`}
                         title={col.label}
+                        aria-label={`${col.label} watermark color`}
                       />
                     ))}
+                    <input
+                      type="color"
+                      value={fontColor}
+                      aria-label="Custom watermark color"
+                      onChange={(event) => {
+                        setFontColor(event.target.value);
+                        if (downloadUrl) setDownloadUrl(null);
+                      }}
+                      className="h-8 w-8 cursor-pointer rounded border bg-background p-0.5"
+                    />
                   </div>
-                </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-xs font-semibold text-foreground block mb-1.5">
@@ -377,17 +517,30 @@ export function WatermarkPdfTool() {
                   <div className="h-1.5 w-2/3 bg-foreground rounded" />
                 </div>
 
-                <div
-                  style={{
-                    transform: `rotate(${rotationDegrees}deg)`,
-                    color: fontColor,
-                    opacity: opacity,
-                    fontSize: `${Math.round(fontSize * 0.45)}px`,
-                  }}
-                  className="font-bold tracking-wider select-none text-center pointer-events-none whitespace-nowrap"
-                >
-                  {watermarkText || "WATERMARK"}
-                </div>
+                {watermarkImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={watermarkImage}
+                    alt="Image watermark preview"
+                    style={{
+                      transform: `rotate(${rotationDegrees}deg)`,
+                      opacity,
+                    }}
+                    className="max-h-28 max-w-28 object-contain select-none pointer-events-none"
+                  />
+                ) : (
+                  <div
+                    style={{
+                      transform: `rotate(${rotationDegrees}deg)`,
+                      color: fontColor,
+                      opacity: opacity,
+                      fontSize: `${Math.round(fontSize * 0.45)}px`,
+                    }}
+                    className="font-bold tracking-wider select-none text-center pointer-events-none whitespace-nowrap"
+                  >
+                    {watermarkText || "WATERMARK"}
+                  </div>
+                )}
               </div>
               <span className="text-[11px] text-muted-foreground mt-2">
                 Applied across {pageFilter === "all" ? `all ${totalPages} pages` : `${pageFilter} pages`}
@@ -399,7 +552,12 @@ export function WatermarkPdfTool() {
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t">
             <div className="text-xs text-muted-foreground flex items-center gap-1.5">
               <Shield className="h-4 w-4 text-green-600 shrink-0" />
-              <span>Embedded vector typography. Fast in-browser execution.</span>
+              <span>
+                {watermarkImage
+                  ? "Image embedded directly in your PDF."
+                  : "Text embedded as vector typography."}{" "}
+                Fast in-browser execution.
+              </span>
             </div>
 
             {downloadUrl ? (

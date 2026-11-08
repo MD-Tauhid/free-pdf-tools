@@ -22,6 +22,8 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+type DisplayedPageImage = RenderedPageImage & { url: string };
+
 export function PdfToImageTool() {
   const [file, setFile] = React.useState<File | null>(null);
   const [rawBuffer, setRawBuffer] = React.useState<ArrayBuffer | null>(null);
@@ -34,9 +36,15 @@ export function PdfToImageTool() {
 
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [progress, setProgress] = React.useState<{ current: number; total: number } | null>(null);
-  const [renderedImages, setRenderedImages] = React.useState<RenderedPageImage[]>([]);
+  const [renderedImages, setRenderedImages] = React.useState<DisplayedPageImage[]>([]);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    return () => {
+      renderedImages.forEach((image) => URL.revokeObjectURL(image.url));
+    };
+  }, [renderedImages]);
 
   const handleFileChange = async (selectedFile: File | null) => {
     if (!selectedFile) return;
@@ -83,7 +91,19 @@ export function PdfToImageTool() {
         scale,
         onProgress: (current, total) => setProgress({ current, total }),
       });
-      setRenderedImages(images);
+      const displayedImages: DisplayedPageImage[] = [];
+      try {
+        for (const image of images) {
+          displayedImages.push({
+            ...image,
+            url: URL.createObjectURL(image.blob),
+          });
+        }
+      } catch (error: unknown) {
+        displayedImages.forEach((image) => URL.revokeObjectURL(image.url));
+        throw error;
+      }
+      setRenderedImages(displayedImages);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Image rendering failed.";
       setError(msg);
@@ -103,17 +123,15 @@ export function PdfToImageTool() {
   };
 
   const handleDownloadAll = () => {
-    renderedImages.forEach((img, index) => {
-      setTimeout(() => {
-        const ext = imageFormat === "image/png" ? "png" : "jpg";
-        const filename = `${file?.name.replace(/\.pdf$/i, "") || "document"}_page_${img.pageNumber}.${ext}`;
-        const a = document.createElement("a");
-        a.href = img.dataUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }, index * 200);
+    const ext = imageFormat === "image/png" ? "png" : "jpg";
+    renderedImages.forEach((image) => {
+      const filename = `${file?.name.replace(/\.pdf$/i, "") || "document"}_page_${image.pageNumber}.${ext}`;
+      const anchor = document.createElement("a");
+      anchor.href = image.url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
     });
   };
 
@@ -188,6 +206,7 @@ export function PdfToImageTool() {
               variant="outline"
               size="sm"
               onClick={handleReset}
+              disabled={isProcessing}
               className="gap-1.5"
             >
               <RotateCcw className="h-4 w-4" />
@@ -204,7 +223,11 @@ export function PdfToImageTool() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setImageFormat("image/png")}
+                  onClick={() => {
+                    setImageFormat("image/png");
+                    setRenderedImages([]);
+                  }}
+                  disabled={isProcessing}
                   className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${
                     imageFormat === "image/png"
                       ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
@@ -215,7 +238,11 @@ export function PdfToImageTool() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setImageFormat("image/jpeg")}
+                  onClick={() => {
+                    setImageFormat("image/jpeg");
+                    setRenderedImages([]);
+                  }}
+                  disabled={isProcessing}
                   className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${
                     imageFormat === "image/jpeg"
                       ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
@@ -240,7 +267,11 @@ export function PdfToImageTool() {
                   <button
                     key={opt.val}
                     type="button"
-                    onClick={() => setScale(opt.val)}
+                    onClick={() => {
+                      setScale(opt.val);
+                      setRenderedImages([]);
+                    }}
+                    disabled={isProcessing}
                     className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all ${
                       scale === opt.val
                         ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
@@ -322,14 +353,14 @@ export function PdfToImageTool() {
                       <div className="relative h-48 w-full rounded-lg border bg-muted/20 flex items-center justify-center overflow-hidden">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={img.dataUrl}
+                          src={img.url}
                           alt={`Page ${img.pageNumber}`}
                           className="max-h-full max-w-full object-contain"
                         />
                       </div>
 
                       <a
-                        href={img.dataUrl}
+                        href={img.url}
                         download={filename}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-blue-700 transition-colors w-full"
                       >

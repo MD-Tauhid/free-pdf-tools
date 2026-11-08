@@ -98,9 +98,11 @@ export function MergePdfTool() {
   };
 
   const moveItem = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+    setMergedBlobUrl(null);
+    setMergedStats(null);
     setItems((prev) => {
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
       const copy = [...prev];
       const temp = copy[index];
       copy[index] = copy[targetIndex];
@@ -110,6 +112,9 @@ export function MergePdfTool() {
   };
 
   const removeItem = (id: string) => {
+    if (!items.some((item) => item.id === id)) return;
+    setMergedBlobUrl(null);
+    setMergedStats(null);
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
@@ -223,6 +228,7 @@ export function MergePdfTool() {
                 variant="outline"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
+                disabled={isProcessing}
                 className="gap-1.5"
               >
                 <Plus className="h-4 w-4" />
@@ -233,6 +239,7 @@ export function MergePdfTool() {
                 variant="ghost"
                 size="sm"
                 onClick={handleReset}
+                disabled={isProcessing}
                 className="text-muted-foreground hover:text-foreground"
               >
                 <RotateCcw className="h-4 w-4" />
@@ -268,7 +275,7 @@ export function MergePdfTool() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    disabled={index === 0}
+                    disabled={isProcessing || index === 0}
                     onClick={() => moveItem(index, "up")}
                     aria-label={`Move ${item.file.name} up`}
                     className="h-8 w-8"
@@ -279,7 +286,7 @@ export function MergePdfTool() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    disabled={index === items.length - 1}
+                    disabled={isProcessing || index === items.length - 1}
                     onClick={() => moveItem(index, "down")}
                     aria-label={`Move ${item.file.name} down`}
                     className="h-8 w-8"
@@ -290,6 +297,7 @@ export function MergePdfTool() {
                     type="button"
                     variant="ghost"
                     size="icon"
+                    disabled={isProcessing}
                     onClick={() => removeItem(item.id)}
                     aria-label={`Remove ${item.file.name}`}
                     className="h-8 w-8 text-destructive hover:bg-destructive/10"
