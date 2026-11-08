@@ -6,7 +6,7 @@
   "description": "Isolated LibreOffice DOCX-to-PDF conversion worker",
   "main": "server.ts",
   "scripts": {
-    "start": "node server.js",
+    "start": "node dist/server.js",
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {},

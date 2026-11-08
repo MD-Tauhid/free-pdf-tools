@@ -1,0 +1,30 @@
+{
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "services": {
+        "app": {
+            "root": ".",
+            "framework": "nextjs",
+            "bindings": [
+                {
+                    "type": "service",
+                    "service": "conversion",
+                    "format": "url",
+                    "env": "CONVERSION_WORKER_URL"
+                }
+            ]
+        },
+        "conversion": {
+            "root": "worker/conversion",
+            "runtime": "container",
+            "entrypoint": "Dockerfile"
+        }
+    },
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": {
+                "service": "app"
+            }
+        }
+    ]
+}

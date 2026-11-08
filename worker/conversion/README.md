@@ -4,10 +4,10 @@ This isolated Node.js service converts `.docx` files with LibreOffice Writer. It
 
 ## Build and run
 
-Build from the repository root so Docker can use the root lockfile:
+Build the worker image using the worker directory as its Docker context:
 
 ```powershell
-docker build -f worker/conversion/Dockerfile -t free-pdf-conversion-worker .
+docker build -t free-pdf-conversion-worker worker/conversion
 ```
 
 ### Local development
@@ -39,3 +39,9 @@ Generate a token with `openssl rand -hex 32`. Use TLS for any network hop that c
 Deploy behind an ingress that applies request-rate limits and TLS. The worker's `/health` endpoint is intended for private container health checks; `/convert` requires a bearer token. The worker container runs as the unprivileged `node` user. Apply container CPU and memory limits, do not mount persistent volumes into its temporary directory, and keep it off public networks.
 
 The UI explains that Word-to-PDF uploads leave the browser for processing. Other PDF tools continue using their existing client-side processing paths.
+
+## Vercel deployment
+
+The root `vercel.json` deploys the Next.js app as the public `app` service and this worker as an internal `conversion` container service. The app declares a service binding to `conversion`; Vercel injects the worker URL as `CONVERSION_WORKER_URL`, which the app's `/api/convert` route already reads. Do not define that URL yourself in Vercel.
+
+Set `CONVERSION_WORKER_TOKEN` for the app and `WORKER_API_TOKEN` for the conversion service to the same random secret of at least 32 characters. The worker image listens on Vercel's default container port (`80`); Docker Compose overrides `PORT` to `8080` for local development. Run `vercel dev` to test the services together locally; Docker and a running Docker daemon are required.

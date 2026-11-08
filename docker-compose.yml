@@ -1,8 +1,8 @@
 services:
   conversion-worker:
     build:
-      context: .
-      dockerfile: worker/conversion/Dockerfile
+      context: ./worker/conversion
+      dockerfile: Dockerfile
     environment:
       PORT: "8080"
       WORKER_API_TOKEN: ${CONVERSION_WORKER_TOKEN:?Set CONVERSION_WORKER_TOKEN in the root .env file}
