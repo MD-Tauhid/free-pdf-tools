@@ -279,10 +279,10 @@ export type TextReplacementHistoryAction =
   | { kind: "text-replacement-add"; replacement: TextReplacement }
   | { kind: "text-replacement-remove"; replacement: TextReplacement }
   | {
-      kind: "text-replacement-update";
-      before: TextReplacement;
-      after: TextReplacement;
-    };
+    kind: "text-replacement-update";
+    before: TextReplacement;
+    after: TextReplacement;
+  };
 
 export type HistoryAction =
   | { kind: "add"; annotation: EditorAnnotation }

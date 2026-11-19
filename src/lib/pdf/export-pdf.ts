@@ -55,8 +55,8 @@ function getStandardFontKey(
     norm.includes("times") || norm.includes("georgia") || norm.includes("garamond") || norm.includes("serif")
       ? "TimesRoman"
       : norm.includes("courier") || norm.includes("mono")
-      ? "Courier"
-      : "Helvetica"
+        ? "Courier"
+        : "Helvetica"
   );
 
   if (target === "TimesRoman") {

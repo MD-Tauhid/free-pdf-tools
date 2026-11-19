@@ -104,10 +104,10 @@ function InPlaceForm({
     fontFamily === "Courier"
       ? 0.6
       : fontFamily === "Bangla"
-      ? 0.58
-      : bold
-      ? 0.55
-      : 0.5;
+        ? 0.58
+        : bold
+          ? 0.55
+          : 0.5;
   const estimatedTextWidth = text.length * fontSize * estimatedCharFactor;
   const availableWidth = item.pdfRect.width;
   const isTooWide = estimatedTextWidth > availableWidth;
