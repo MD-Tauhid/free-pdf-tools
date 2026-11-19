@@ -395,6 +395,7 @@ Acceptance criteria:
 - Support fonts and styles where technically possible.
 - Detect unsupported layouts and display honest warnings.
 - Test on multiple real-world PDFs with different fonts, backgrounds, rotations, and paragraph structures.
+- The fonts should be support local language like bangla, german, spanish, franch. If anyone want to write those language they can.
 - Document known limitations.
 
 Do not simulate successful editing when the underlying PDF cannot be modified reliably.

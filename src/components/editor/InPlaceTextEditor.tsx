@@ -100,7 +100,14 @@ function InPlaceForm({
   const assessment = assessTextReplacement(item, text);
 
   // Calculate width ratio to warn if text overflows
-  const estimatedCharFactor = fontFamily === "Courier" ? 0.6 : bold ? 0.55 : 0.5;
+  const estimatedCharFactor =
+    fontFamily === "Courier"
+      ? 0.6
+      : fontFamily === "Bangla"
+      ? 0.58
+      : bold
+      ? 0.55
+      : 0.5;
   const estimatedTextWidth = text.length * fontSize * estimatedCharFactor;
   const availableWidth = item.pdfRect.width;
   const isTooWide = estimatedTextWidth > availableWidth;

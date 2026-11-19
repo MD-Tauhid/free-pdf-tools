@@ -145,7 +145,8 @@ export type PdfFontFamily =
   | "Georgia"
   | "Verdana"
   | "Trebuchet"
-  | "Garamond";
+  | "Garamond"
+  | "Bangla";
 
 export interface FontFamilyOption {
   /** Internal key used in state and export. */
@@ -153,7 +154,7 @@ export interface FontFamilyOption {
   /** Human-readable label shown in the font picker. */
   label: string;
   /** Font classification */
-  category: "Sans-Serif" | "Serif" | "Monospace";
+  category: "Sans-Serif" | "Serif" | "Monospace" | "Indic" | "Multilingual";
   /** CSS font-family for the live preview on canvas. */
   cssFamily: string;
   /** Standard PDF font mapping for export */
@@ -169,7 +170,7 @@ export const PDF_FONT_FAMILIES: readonly FontFamilyOption[] = [
     category: "Sans-Serif",
     cssFamily: "Arial, Helvetica, sans-serif",
     pdfStandardFont: "Helvetica",
-    description: "Standard clean sans-serif (Word default)",
+    description: "Standard sans-serif (English, German, Spanish, French)",
   },
   {
     value: "TimesRoman",
@@ -177,7 +178,7 @@ export const PDF_FONT_FAMILIES: readonly FontFamilyOption[] = [
     category: "Serif",
     cssFamily: "'Times New Roman', Times, serif",
     pdfStandardFont: "TimesRoman",
-    description: "Classic formal serif",
+    description: "Classic formal serif (English, German, Spanish, French)",
   },
   {
     value: "Courier",
@@ -193,7 +194,7 @@ export const PDF_FONT_FAMILIES: readonly FontFamilyOption[] = [
     category: "Serif",
     cssFamily: "Georgia, 'Times New Roman', serif",
     pdfStandardFont: "TimesRoman",
-    description: "Elegant high-legibility serif",
+    description: "Elegant serif (English, German, Spanish, French)",
   },
   {
     value: "Verdana",
@@ -209,7 +210,7 @@ export const PDF_FONT_FAMILIES: readonly FontFamilyOption[] = [
     category: "Sans-Serif",
     cssFamily: "'Trebuchet MS', Helvetica, sans-serif",
     pdfStandardFont: "Helvetica",
-    description: "Modern sans-serif with personality",
+    description: "Modern sans-serif (English, German, Spanish, French)",
   },
   {
     value: "Garamond",
@@ -217,7 +218,16 @@ export const PDF_FONT_FAMILIES: readonly FontFamilyOption[] = [
     category: "Serif",
     cssFamily: "Garamond, 'Times New Roman', serif",
     pdfStandardFont: "TimesRoman",
-    description: "Traditional publication serif",
+    description: "Publication serif (English, German, Spanish, French)",
+  },
+  {
+    value: "Bangla",
+    label: "Bangla / Bengali (বাংলা)",
+    category: "Indic",
+    cssFamily:
+      "'Noto Sans Bengali', 'SolaimanLipi', Kalpurush, 'Siyam Rupali', Vrinda, 'Bangla Sangam MN', 'Segoe UI', Arial, sans-serif",
+    pdfStandardFont: "Helvetica",
+    description: "Bangla Unicode script (বাংলা ভাষা ও স্থানীয় বর্ণমালা)",
   },
 ] as const;
 

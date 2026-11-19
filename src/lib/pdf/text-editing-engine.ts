@@ -75,7 +75,7 @@ export function assessTextReplacement(
     "This is a visual cover, not secure redaction. The original text remains in the PDF content and may still be recoverable."
   );
   warnings.push(
-    "Replacement uses a standard Helvetica font; original embedded font styling is not preserved."
+    "Replacement uses selected standard or local fonts (Helvetica, Times, Courier, Bangla, etc.); original embedded proprietary font files cannot be modified directly."
   );
 
   return {

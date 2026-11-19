@@ -111,7 +111,14 @@ function SelectedTextPanel() {
   const hasPreview = replacementPreview?.sourceItemId === item.id;
 
   // Estimate text width to warn if it exceeds the bounding box
-  const charFactor = draft.fontFamily === "Courier" ? 0.6 : draft.bold ? 0.55 : 0.5;
+  const charFactor =
+    draft.fontFamily === "Courier"
+      ? 0.6
+      : draft.fontFamily === "Bangla"
+      ? 0.58
+      : draft.bold
+      ? 0.55
+      : 0.5;
   const estimatedWidth = draft.text.length * draft.fontSize * charFactor;
   const availableWidth = item.pdfRect.width;
   const widthRatio = availableWidth > 0 ? estimatedWidth / availableWidth : 1;
@@ -238,6 +245,12 @@ function SelectedTextPanel() {
               </option>
             ))}
           </select>
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5">
+            <span>Language support:</span>
+            <span className="font-medium text-foreground/80">
+              DE • ES • FR • বাংলা
+            </span>
+          </div>
         </div>
 
         {/* Font Size & Presets */}
@@ -633,6 +646,12 @@ function AnnotationPropertiesPanel({
               </option>
             ))}
           </select>
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5">
+            <span>Language support:</span>
+            <span className="font-medium text-foreground/80">
+              DE • ES • FR • বাংলা
+            </span>
+          </div>
         </div>
 
         {/* Font size */}

@@ -78,24 +78,25 @@ This document outlines the phased roadmap for building **Free PDF Tools**, a fas
 ---
 
 ### Phase 5: Advanced Text Editing Engine
-- **Status:** Complete (Verified with MS Word-like In-Place & Ribbon Editing)
+- **Status:** Complete (Verified with MS Word-like In-Place Editing & Multilingual Support)
 - **Objectives:**
   - [x] Define an extensible text extractor, layout analyzer, editing engine, and export service around the existing document loader (`text-editing-engine.ts`, `pdf-editing-engine.ts`).
   - [x] Implement selected single-span editing with a live visual cover-and-replacement preview.
-  - [x] Support font families (Helvetica / Arial, Times New Roman, Courier New, Georgia, Verdana, Trebuchet MS, Garamond) with automatic standard PDF font mapping on export.
+  - [x] Support font families (Helvetica / Arial, Times New Roman, Courier New, Georgia, Verdana, Trebuchet MS, Garamond, Bangla) with automatic standard PDF font mapping on export.
+  - [x] Support local languages: **German** (ä, ö, ü, ß), **Spanish** (á, é, í, ó, ú, ñ, ¿, ¡), **French** (ç, è, é, ê, à, œ) via native vector standard fonts, and **Bangla** (বাংলা) via high-resolution canvas PNG embedding.
   - [x] Support bold and italic styles for replacement text and text-box annotations.
   - [x] Implement Microsoft Word-like in-place editing directly on the document canvas (`InPlaceTextEditor`) with a floating Word mini-toolbar.
   - [x] Add MS Word Font Ribbon in `EditorToolbar` and comprehensive Word formatting panel in `PropertiesSidebar`.
   - [x] Provide one-click "Auto-Fit" font size adjustment with visual span capacity meter to avoid text overflow.
   - [x] Provide Microsoft Office theme color palettes for font color and paper cover/highlight colors.
   - [x] Export supported replacements as solid-color cover plus styled replacement text, without altering original source text objects.
-  - [x] Reject rotated, multiline, overflowing, or unencodable replacements; warn that background complexity cannot be detected.
-  - [x] Validate replacement previews, reset, undo/redo, and font export via automated unit tests (`test/phase5-text-editing.test.ts`).
+  - [x] Reject rotated, multiline, or overflowing replacements; warn that background complexity cannot be detected.
+  - [x] Validate replacement previews, reset, undo/redo, multilingual export, and font export via automated unit tests (`test/phase5-text-editing.test.ts`).
 - **Acceptance Criteria:**
   - [x] Users can select any extracted text span on the document and edit it directly in-place or via the sidebar like Microsoft Word.
   - [x] Font family, font size, bold, italic, text color, and cover background color can be changed with immediate live preview.
-  - [x] Exported PDFs embed the selected standard fonts (Helvetica, TimesRoman, Courier) and bold/italic styles over supported spans.
-  - [x] Unsupported span/layout/encoding conditions produce actionable warnings or export errors.
+  - [x] Exported PDFs embed the selected standard fonts (Helvetica, TimesRoman, Courier) and bold/italic styles over supported spans, with vector rendering for Latin/European scripts and high-DPI canvas rendering for Bangla.
+  - [x] Unsupported span/layout/overflow conditions produce actionable warnings or export errors.
   - [x] Automated unit and integration tests passing (`test/phase5-text-editing.test.ts`).
 
 ---

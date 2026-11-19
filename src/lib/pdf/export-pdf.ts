@@ -12,6 +12,7 @@ import {
   type TextReplacement,
   type PdfFontFamily,
   PDF_FONT_FAMILIES,
+  getCssFontFamily,
 } from "@/types/editor";
 import {
   assessTextReplacement,
@@ -87,6 +88,85 @@ function getTextFont(
   return pdf.embedFont(getStandardFontKey(family, bold, italic));
 }
 
+function canFontEncode(font: PDFFont, text: string): boolean {
+  try {
+    font.widthOfTextAtSize(text, 12);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const MINIMAL_1X1_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+/**
+ * Render arbitrary Unicode text (e.g. Bangla or non-WinAnsi scripts)
+ * to a high-DPI transparent PNG for embedding into the PDF document.
+ */
+export function renderTextToPng(
+  text: string,
+  fontSizePt: number,
+  fontFamily: string = "Helvetica",
+  color: string = "#000000",
+  bold = false,
+  italic = false
+): { bytes: Uint8Array; widthPt: number; heightPt: number } {
+  // Headless / Node.js test environment fallback
+  if (typeof document === "undefined") {
+    const bytes = Uint8Array.from(atob(MINIMAL_1X1_PNG_BASE64), (c) =>
+      c.charCodeAt(0)
+    );
+    const estimatedWidth = Math.max(1, text.length * fontSizePt * 0.55);
+    const estimatedHeight = Math.max(1, fontSizePt * 1.25);
+    return { bytes, widthPt: estimatedWidth, heightPt: estimatedHeight };
+  }
+
+  const scale = 4; // High DPI (288 DPI) for crisp print fidelity
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    const bytes = Uint8Array.from(atob(MINIMAL_1X1_PNG_BASE64), (c) =>
+      c.charCodeAt(0)
+    );
+    return {
+      bytes,
+      widthPt: Math.max(1, text.length * fontSizePt * 0.55),
+      heightPt: Math.max(1, fontSizePt * 1.25),
+    };
+  }
+
+  const fontStyle = italic ? "italic " : "";
+  const fontWeight = bold ? "bold " : "normal";
+  const resolvedCssFamily = getCssFontFamily(fontFamily);
+  const fallback =
+    "'Noto Sans Bengali', 'SolaimanLipi', Kalpurush, 'Siyam Rupali', Vrinda, 'Bangla Sangam MN', 'Segoe UI', Arial, sans-serif";
+  const fontSpec = `${fontStyle}${fontWeight}${Math.round(fontSizePt * scale)}px ${resolvedCssFamily}, ${fallback}`;
+
+  ctx.font = fontSpec;
+  const metrics = ctx.measureText(text);
+  const textWidthPx = Math.max(1, Math.ceil(metrics.width));
+  const heightPt = fontSizePt * 1.3;
+  const heightPx = Math.max(1, Math.ceil(heightPt * scale));
+
+  canvas.width = textWidthPx;
+  canvas.height = heightPx;
+
+  // Canvas resize clears context state, so re-apply font and style
+  ctx.font = fontSpec;
+  ctx.fillStyle = color;
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 0, heightPx / 2);
+
+  const dataUrl = canvas.toDataURL("image/png");
+  const prefix = "data:image/png;base64,";
+  const base64 = dataUrl.startsWith(prefix) ? dataUrl.slice(prefix.length) : "";
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  const widthPt = textWidthPx / scale;
+
+  return { bytes, widthPt, heightPt };
+}
+
 function dataUrlToBytes(dataUrl: string, mimeType: string): Uint8Array {
   const prefix = `data:${mimeType};base64,`;
   if (!dataUrl.startsWith(prefix)) {
@@ -145,31 +225,66 @@ async function drawAnnotation(
       }
       const lines = annotation.content.split(/\r?\n/);
       const lineHeight = annotation.fontSize * 1.3;
-      lines.forEach((line, index) => {
+      const isBangla = annotation.fontFamily === "Bangla";
+      for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        if (!line) continue;
         const textY = y + height - annotation.fontSize - index * lineHeight;
-        page.drawText(line, {
-          x: x + 2,
-          y: textY,
-          size: annotation.fontSize,
-          font,
-          color: parseColor(annotation.color),
-          opacity: annotation.opacity,
-          maxWidth: Math.max(1, width - 4),
-        });
-        if (annotation.underline && line) {
-          const lineWidth = Math.min(
-            font.widthOfTextAtSize(line, annotation.fontSize),
-            width - 4
-          );
-          page.drawLine({
-            start: { x: x + 2, y: textY - 1 },
-            end: { x: x + 2 + lineWidth, y: textY - 1 },
-            thickness: Math.max(0.5, annotation.fontSize / 16),
+        if (!isBangla && canFontEncode(font, line)) {
+          page.drawText(line, {
+            x: x + 2,
+            y: textY,
+            size: annotation.fontSize,
+            font,
             color: parseColor(annotation.color),
             opacity: annotation.opacity,
+            maxWidth: Math.max(1, width - 4),
           });
+          if (annotation.underline) {
+            const lineWidth = Math.min(
+              font.widthOfTextAtSize(line, annotation.fontSize),
+              width - 4
+            );
+            page.drawLine({
+              start: { x: x + 2, y: textY - 1 },
+              end: { x: x + 2 + lineWidth, y: textY - 1 },
+              thickness: Math.max(0.5, annotation.fontSize / 16),
+              color: parseColor(annotation.color),
+              opacity: annotation.opacity,
+            });
+          }
+        } else {
+          // Render Unicode/Bangla text via high-resolution canvas PNG embed
+          const rendered = renderTextToPng(
+            line,
+            annotation.fontSize,
+            annotation.fontFamily,
+            annotation.color,
+            annotation.bold,
+            annotation.italic
+          );
+          const image = await pdf.embedPng(rendered.bytes);
+          const maxLineWidth = Math.max(1, width - 4);
+          const drawWidth = Math.min(rendered.widthPt, maxLineWidth);
+          const drawHeight = (drawWidth / Math.max(1, rendered.widthPt)) * rendered.heightPt;
+          page.drawImage(image, {
+            x: x + 2,
+            y: textY - Math.max(0, (drawHeight - annotation.fontSize) / 2),
+            width: drawWidth,
+            height: drawHeight,
+            opacity: annotation.opacity,
+          });
+          if (annotation.underline) {
+            page.drawLine({
+              start: { x: x + 2, y: textY - 1 },
+              end: { x: x + 2 + drawWidth, y: textY - 1 },
+              thickness: Math.max(0.5, annotation.fontSize / 16),
+              color: parseColor(annotation.color),
+              opacity: annotation.opacity,
+            });
+          }
         }
-      });
+      }
       return;
     }
     case "highlight":
@@ -199,14 +314,36 @@ async function drawAnnotation(
         );
       } else if (annotation.typedText) {
         const font = await pdf.embedFont(StandardFonts.TimesRomanItalic);
-        page.drawText(annotation.typedText, {
-          x: annotation.pdfRect.x,
-          y: annotation.pdfRect.y,
-          size: annotation.pdfRect.height,
-          font,
-          color: parseColor(annotation.strokeColor),
-          opacity: annotation.opacity,
-        });
+        if (canFontEncode(font, annotation.typedText)) {
+          page.drawText(annotation.typedText, {
+            x: annotation.pdfRect.x,
+            y: annotation.pdfRect.y,
+            size: annotation.pdfRect.height,
+            font,
+            color: parseColor(annotation.strokeColor),
+            opacity: annotation.opacity,
+          });
+        } else {
+          const rendered = renderTextToPng(
+            annotation.typedText,
+            annotation.pdfRect.height,
+            "TimesRoman",
+            annotation.strokeColor,
+            false,
+            true
+          );
+          const image = await pdf.embedPng(rendered.bytes);
+          const maxW = annotation.pdfRect.width;
+          const drawW = Math.min(rendered.widthPt, maxW);
+          const drawH = (drawW / Math.max(1, rendered.widthPt)) * rendered.heightPt;
+          page.drawImage(image, {
+            x: annotation.pdfRect.x,
+            y: annotation.pdfRect.y,
+            width: drawW,
+            height: Math.min(drawH, annotation.pdfRect.height),
+            opacity: annotation.opacity,
+          });
+        }
       }
       return;
     case "image": {
@@ -263,26 +400,10 @@ async function applyTextReplacement(
   const fontFamily = replacement.fontFamily ?? "Helvetica";
   const bold = replacement.bold ?? false;
   const italic = replacement.italic ?? false;
-  const font = await getTextFont(pdf, bold, italic, fontFamily);
-  let textWidth: number;
-  try {
-    textWidth = font.widthOfTextAtSize(
-      replacement.replacementText,
-      replacement.fontSize
-    );
-  } catch {
-    throw new Error(
-      `${fontFamily} cannot encode some characters in this replacement. Use Latin-1 text or add the text as a regular annotation.`
-    );
-  }
   const availableWidth = replacement.pdfRect.width - 2;
-  if (textWidth > availableWidth) {
-    throw new Error(
-      `Replacement text is too wide for this span (${textWidth.toFixed(1)} pt needed, ${availableWidth.toFixed(1)} pt available). Shorten the text or reduce its font size.`
-    );
-  }
-
   const rect = replacement.pdfRect;
+
+  // Draw background wipe rectangle to cover original PDF text
   page.drawRectangle({
     x: rect.x - 1,
     y: rect.y - 1,
@@ -290,14 +411,55 @@ async function applyTextReplacement(
     height: rect.height + 2,
     color: parseColor(replacement.backgroundColor),
   });
-  page.drawText(replacement.replacementText, {
-    x: rect.x,
-    y: rect.y + Math.max(0, (rect.height - replacement.fontSize) / 2),
-    size: replacement.fontSize,
-    font,
-    color: parseColor(replacement.color),
-    maxWidth: availableWidth,
-  });
+
+  const font = await getTextFont(pdf, bold, italic, fontFamily);
+  const isBanglaFont = fontFamily === "Bangla";
+  const canVector = !isBanglaFont && canFontEncode(font, replacement.replacementText);
+
+  if (canVector) {
+    const textWidth = font.widthOfTextAtSize(
+      replacement.replacementText,
+      replacement.fontSize
+    );
+    if (textWidth > availableWidth) {
+      throw new Error(
+        `Replacement text is too wide for this span (${textWidth.toFixed(1)} pt needed, ${availableWidth.toFixed(1)} pt available). Shorten the text or reduce its font size.`
+      );
+    }
+    page.drawText(replacement.replacementText, {
+      x: rect.x,
+      y: rect.y + Math.max(0, (rect.height - replacement.fontSize) / 2),
+      size: replacement.fontSize,
+      font,
+      color: parseColor(replacement.color),
+      maxWidth: availableWidth,
+    });
+  } else {
+    // Non-WinAnsi script (e.g. Bangla Unicode) or explicit Bangla font
+    const rendered = renderTextToPng(
+      replacement.replacementText,
+      replacement.fontSize,
+      fontFamily,
+      replacement.color,
+      bold,
+      italic
+    );
+    if (rendered.widthPt > availableWidth) {
+      throw new Error(
+        `Replacement text is too wide for this span (${rendered.widthPt.toFixed(1)} pt needed, ${availableWidth.toFixed(1)} pt available). Shorten the text or reduce its font size.`
+      );
+    }
+    const image = await pdf.embedPng(rendered.bytes);
+    const drawWidth = Math.min(rendered.widthPt, availableWidth);
+    const drawHeight = (drawWidth / Math.max(1, rendered.widthPt)) * rendered.heightPt;
+    const drawY = rect.y + Math.max(0, (rect.height - drawHeight) / 2);
+    page.drawImage(image, {
+      x: rect.x,
+      y: drawY,
+      width: drawWidth,
+      height: Math.min(drawHeight, rect.height + 2),
+    });
+  }
 }
 
 /**

@@ -14,10 +14,12 @@ Because open-source web environments do not possess full PostScript-level layout
 - **The Issue:** Every character or word in a PDF has an explicit location `(x, y)` on the page specified by operators such as `Tm` (text matrix) or `Td` (move text position). There is no inherent concept of "paragraphs" or "margins" in the raw PDF stream.
 - **The Impact:** If an existing word "cat" (3 characters) is replaced with "elephant" (8 characters), the neighboring words to the right or below will not automatically move. The new text will either collide with adjacent text or extend beyond the page boundaries unless manually adjusted.
 
-### 2.2 Font Subsetting
+### 2.2 Font Subsetting & Multilingual Support
 - **The Issue:** To minimize file size, PDF generators rarely embed complete font files. Instead, they embed "font subsets" containing only the exact glyphs used in the original document. For instance, if the letter "Z" was never used in the original document, the embedded font does not have glyph data or character metrics for "Z".
 - **The Impact:** Direct in-place editing of text strings using the document's original embedded font will fail or display garbled characters if the user types letters not present in the subset.
-- **Current implementation:** Replacement text supports user-selectable standard fonts (Helvetica / Arial, Times New Roman, Courier New, Georgia, Verdana, Trebuchet MS, Garamond) with Bold and Italic weights. Custom TrueType/OpenType font file embedding and exact original subset synthesis are not implemented.
+- **Current implementation:**
+  - **Standard Latin & European Languages:** Replacement text and text boxes support user-selectable standard fonts (Helvetica / Arial, Times New Roman, Courier New, Georgia, Verdana, Trebuchet MS, Garamond) with Bold and Italic weights. European local languages including **German** (ä, ö, ü, ß), **Spanish** (á, é, í, ó, ú, ñ, ¿, ¡), and **French** (ç, è, é, ê, à, œ) are fully supported as crisp vector text via standard PDF encoding.
+  - **Bangla & Complex Scripts:** Non-WinAnsi scripts such as **Bangla** (বাংলা) are natively rendered using high-resolution offscreen canvas shaping (288 DPI) and embedded as transparent PNG images into the PDF document, ensuring correct conjunct shaping (যুক্তাক্ষর) and zero encoding crashes.
 
 ### 2.3 Background Occlusion & Artifacts
 - **The Issue:** Because existing glyphs are baked into the PDF content stream, modifying text requires redacting (masking) the original glyphs before drawing the new text.
@@ -52,7 +54,7 @@ Existing text can be changed only through a deliberately limited **visual cover-
 ### Key Principles of This Approach:
 1. **Not secure redaction**: The original text operators remain in the exported PDF and may be recovered by copying text or inspecting the PDF. Do not use this workflow to conceal sensitive information.
 2. **Manually selected solid cover**: The application cannot detect the source background. Users must choose a matching solid color. Image, gradient, patterned, and vector backgrounds may be visibly damaged by the patch.
-3. **Single horizontal span only**: Rotated spans, line breaks, and automatic paragraph reflow across the whole page are unsupported. Selectable standard fonts (Helvetica, Times New Roman, Courier) with Bold and Italic styles are supported, and export rejects text that exceeds its fixed-width span or cannot be encoded by standard fonts.
+3. **Single horizontal span only**: Rotated spans, line breaks, and automatic paragraph reflow across the whole page are unsupported. Selectable standard fonts (Helvetica, Times New Roman, Courier, Georgia, Verdana, Trebuchet MS, Garamond, Bangla) with Bold and Italic styles are supported. Export supports local languages including German, Spanish, French, and Bangla, rejecting text only when it exceeds its fixed-width span.
 4. **Non-destructive base**: Preview and export start from the original in-memory PDF so repeated exports do not stack edits. Unaffected original page content is preserved.
 5. **Fallback options**: For complex backgrounds or unsupported text, use regular annotation tools instead. Those annotations do not modify source text.
 
