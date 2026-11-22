@@ -5,6 +5,7 @@ import {
   pdfPointToViewport,
   pdfRectToViewportRect,
   viewportPointToPdf,
+  screenDeltaToPdfDelta,
 } from "@/lib/pdf/coordinates";
 import { usePdfEditorStore } from "@/stores/pdf-editor-store";
 import type { EditorAnnotation } from "@/types/editor";
@@ -31,7 +32,9 @@ assert.deepEqual(
   ),
   { x: 40, y: 20, width: 80, height: 60 }
 );
-console.log("✓ Viewport coordinate conversion supports rotated pages and zoom");
+const delta = screenDeltaToPdfDelta(40, 20, viewport);
+assert.deepEqual(delta, { x: 10, y: 20 });
+console.log("✓ Viewport coordinate conversion and screenDeltaToPdfDelta support rotated pages and zoom");
 
 const store = usePdfEditorStore.getState();
 store.clearAllAnnotations();
@@ -60,7 +63,84 @@ store.undo();
 assert.equal(store.getAnnotationsForPage(1)[0].type, "highlight");
 assert.equal(store.canRedo(), true);
 store.redo();
+
+// Test dragging position updates and undo/redo for image, drawing, and signature
+const imageAnnotation: EditorAnnotation = {
+  id: "draggable-img",
+  type: "image",
+  pageNumber: 1,
+  pdfRect: { x: 50, y: 50, width: 100, height: 100 },
+  dataUrl:
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  mimeType: "image/png",
+  opacity: 1,
+};
+store.addAnnotation(imageAnnotation);
+assert.equal(store.getAnnotationsForPage(1).length, 2);
+
+// Drag image to new position (x: 80, y: 30)
+const movedImage: EditorAnnotation = {
+  ...imageAnnotation,
+  pdfRect: { ...imageAnnotation.pdfRect, x: 80, y: 30 },
+};
+store.updateAnnotation(movedImage);
+assert.deepEqual(
+  store.getAnnotationsForPage(1).find((a) => a.id === "draggable-img")?.pdfRect,
+  { x: 80, y: 30, width: 100, height: 100 }
+);
+
+// Drag drawing to new position
+const drawAnnotation: EditorAnnotation = {
+  id: "draggable-draw",
+  type: "draw",
+  pageNumber: 1,
+  pdfRect: { x: 10, y: 10, width: 20, height: 20 },
+  points: [
+    { x: 10, y: 10 },
+    { x: 30, y: 30 },
+  ],
+  strokeColor: "#000000",
+  strokeWidth: 2,
+  opacity: 1,
+};
+store.addAnnotation(drawAnnotation);
+const movedDraw: EditorAnnotation = {
+  ...drawAnnotation,
+  pdfRect: { x: 25, y: 15, width: 20, height: 20 },
+  points: [
+    { x: 25, y: 15 },
+    { x: 45, y: 35 },
+  ],
+};
+store.updateAnnotation(movedDraw);
+const storedDraw = store
+  .getAnnotationsForPage(1)
+  .find((a) => a.id === "draggable-draw");
+assert.deepEqual(storedDraw?.pdfRect, { x: 25, y: 15, width: 20, height: 20 });
+if (storedDraw && "points" in storedDraw) {
+  assert.deepEqual(storedDraw.points, [
+    { x: 25, y: 15 },
+    { x: 45, y: 35 },
+  ]);
+}
+
+// Undo reverts moved drawing back to original position
+store.undo();
+const revertedDraw = store
+  .getAnnotationsForPage(1)
+  .find((a) => a.id === "draggable-draw");
+assert.deepEqual(revertedDraw?.pdfRect, { x: 10, y: 10, width: 20, height: 20 });
+if (revertedDraw && "points" in revertedDraw) {
+  assert.deepEqual(revertedDraw.points, [
+    { x: 10, y: 10 },
+    { x: 30, y: 30 },
+  ]);
+}
+console.log("✓ Drag position updates and undo/redo for image, drawing, and signature");
+
 store.removeAnnotation("history-check", 1);
+store.removeAnnotation("draggable-img", 1);
+store.removeAnnotation("draggable-draw", 1);
 assert.equal(store.getAnnotationsForPage(1).length, 0);
 store.undo();
 assert.equal(store.getAnnotationsForPage(1).length, 1);

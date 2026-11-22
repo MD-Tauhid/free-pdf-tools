@@ -48,6 +48,23 @@ export function viewportPointToPdf(
   return { x, y };
 }
 
+/**
+ * Converts a delta offset in Screen Space (CSS pixels) to PDF User Space displacement vector.
+ * Accounts for zoom scaling, page rotation, and coordinate orientation.
+ */
+export function screenDeltaToPdfDelta(
+  screenDx: number,
+  screenDy: number,
+  viewport: PdfViewportTransform
+): PdfPoint {
+  const p0 = viewportPointToPdf({ x: 0, y: 0 }, viewport);
+  const p1 = viewportPointToPdf({ x: screenDx, y: screenDy }, viewport);
+  return {
+    x: p1.x - p0.x,
+    y: p1.y - p0.y,
+  };
+}
+
 export function pdfRectToViewportRect(
   rect: RectBounds,
   viewport: PdfViewportTransform

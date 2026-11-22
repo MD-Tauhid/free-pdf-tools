@@ -31,6 +31,7 @@ export function AnnotationInputLayer({
   viewport,
 }: AnnotationInputLayerProps) {
   const activeTool = usePdfEditorStore((state) => state.activeTool);
+  const setActiveTool = usePdfEditorStore((state) => state.setActiveTool);
   const addAnnotation = usePdfEditorStore((state) => state.addAnnotation);
   const selectAnnotation = usePdfEditorStore((state) => state.selectAnnotation);
   const [points, setPoints] = React.useState<PdfPoint[]>([]);
@@ -130,6 +131,10 @@ export function AnnotationInputLayer({
         strokeWidth: 2,
         opacity: 1,
       };
+      addAnnotation(annotation);
+      selectAnnotation(id);
+      setActiveTool("select");
+      return;
     } else {
       annotation = {
         id,
