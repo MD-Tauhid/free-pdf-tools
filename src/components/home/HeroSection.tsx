@@ -14,9 +14,11 @@ import {
   ArrowRight,
   FileCheck,
 } from "lucide-react";
+import { usePendingFileStore } from "@/stores/pending-file-store";
 
 export function HeroSection() {
   const router = useRouter();
+  const setPendingFile = usePendingFileStore((s) => s.setPendingFile);
   const [selectedFileName, setSelectedFileName] = React.useState<string | null>(null);
 
   const onDrop = React.useCallback(
@@ -24,11 +26,12 @@ export function HeroSection() {
       if (acceptedFiles.length > 0) {
         const file = acceptedFiles[0];
         setSelectedFileName(file.name);
-        // Navigate to the editor. In Phase 3, this hooks into the in-memory document store.
+        // Store the file so the editor can pick it up after navigation.
+        setPendingFile(file);
         router.push("/pdf-editor");
       }
     },
-    [router]
+    [router, setPendingFile]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

@@ -4,6 +4,7 @@ import * as React from "react";
 import { usePdfDocument } from "@/hooks/usePdfDocument";
 import { usePdfEditor } from "@/hooks/usePdfEditor";
 import { usePdfEditorStore } from "@/stores/pdf-editor-store";
+import { usePendingFileStore } from "@/stores/pending-file-store";
 import { PdfUploader } from "@/components/pdf/PdfUploader";
 import { PdfPage } from "@/components/pdf/PdfPage";
 import { PdfToolbar } from "@/components/pdf/PdfToolbar";
@@ -103,6 +104,18 @@ export function EditorWorkspace({ className }: EditorWorkspaceProps) {
     selectAnnotation(null);
     selectTextItem(null);
   }, [currentPage, selectAnnotation, selectTextItem]);
+
+  // On mount, check if the homepage deposited a pending file and load it automatically.
+  const consumePendingFile = usePendingFileStore((s) => s.consumePendingFile);
+  const didConsumePendingFile = React.useRef(false);
+  React.useEffect(() => {
+    if (didConsumePendingFile.current) return;
+    const pending = consumePendingFile();
+    if (pending) {
+      didConsumePendingFile.current = true;
+      loadFile(pending);
+    }
+  }, [consumePendingFile, loadFile]);
 
   // Keep the page proxy so all overlays use PDF.js' exact rotated viewport transform.
   const handlePageLoaded = React.useCallback((page: PDFPageProxy) => {

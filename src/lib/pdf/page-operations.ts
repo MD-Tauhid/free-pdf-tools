@@ -20,6 +20,8 @@ export interface WatermarkOptions {
   opacity?: number; // 0.0 to 1.0
   rotationDegrees?: number; // e.g. 45
   pageFilter?: "all" | "odd" | "even" | number[]; // 1-based page numbers
+  xPercent?: number; // 0 to 100, default 50 (center)
+  yPercent?: number; // 0 to 100, default 50 (center)
 }
 
 export interface SplitResult {
@@ -364,12 +366,26 @@ export async function addWatermarkToPdf(
   ) {
     throw new Error("Watermark color must be a 3- or 6-digit hexadecimal color.");
   }
+  if (
+    options.xPercent !== undefined &&
+    (!Number.isFinite(options.xPercent) || options.xPercent < 0 || options.xPercent > 100)
+  ) {
+    throw new Error("Watermark xPercent must be a number from 0 to 100.");
+  }
+  if (
+    options.yPercent !== undefined &&
+    (!Number.isFinite(options.yPercent) || options.yPercent < 0 || options.yPercent > 100)
+  ) {
+    throw new Error("Watermark yPercent must be a number from 0 to 100.");
+  }
 
   const doc = await PDFDocument.load(pdfData, { ignoreEncryption: true });
   const totalPages = doc.getPageCount();
 
   const opacity = options.opacity ?? 0.3;
   const rotationDegrees = options.rotationDegrees ?? 45;
+  const xPct = options.xPercent ?? 50;
+  const yPct = options.yPercent ?? 50;
 
   if (options.text?.trim()) {
     const font = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -384,16 +400,16 @@ export async function addWatermarkToPdf(
       const textWidth = font.widthOfTextAtSize(options.text, fontSize);
       const textHeight = font.heightAtSize(fontSize);
 
-      // Center the text on the page with rotation
+      // Center the text on the page with rotation around target (xPct, yPct)
       const rad = (rotationDegrees * Math.PI) / 180;
       const cos = Math.cos(rad);
       const sin = Math.sin(rad);
 
-      // Compute centered position
-      const centerX = width / 2;
-      const centerY = height / 2;
-      const x = centerX - (textWidth / 2) * cos + (textHeight / 2) * sin;
-      const y = centerY - (textWidth / 2) * sin - (textHeight / 2) * cos;
+      // Compute position from percentages (PDF user-space: 0,0 at bottom-left)
+      const targetCenterX = (width * xPct) / 100;
+      const targetCenterY = height - (height * yPct) / 100;
+      const x = targetCenterX - (textWidth / 2) * cos + (textHeight / 2) * sin;
+      const y = targetCenterY - (textWidth / 2) * sin - (textHeight / 2) * cos;
 
       page.drawText(options.text, {
         x,
@@ -411,6 +427,10 @@ export async function addWatermarkToPdf(
       ? await doc.embedPng(bytes)
       : await doc.embedJpg(bytes);
 
+    const rad = (rotationDegrees * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
     for (let pageNum = 1; pageNum <= totalPages; pageNum += 1) {
       if (!shouldWatermarkPage(pageNum, options.pageFilter)) continue;
 
@@ -420,8 +440,10 @@ export async function addWatermarkToPdf(
       const maxDim = Math.min(width, height) * 0.5;
       const imgDims = image.scaleToFit(maxDim, maxDim);
 
-      const x = (width - imgDims.width) / 2;
-      const y = (height - imgDims.height) / 2;
+      const targetCenterX = (width * xPct) / 100;
+      const targetCenterY = height - (height * yPct) / 100;
+      const x = targetCenterX - (imgDims.width / 2) * cos + (imgDims.height / 2) * sin;
+      const y = targetCenterY - (imgDims.width / 2) * sin - (imgDims.height / 2) * cos;
 
       page.drawImage(image, {
         x,

@@ -221,7 +221,46 @@ await assert.rejects(
   /either watermark text or an image/
 );
 await addWatermarkToPdf(threePagePdf, { text: "DRAFT", opacity: 0 });
-console.log("✓ addWatermarkToPdf embeds text and image watermarks with page filtering");
+
+// Test custom positioning (xPercent and yPercent)
+const customPosWatermarked = await addWatermarkToPdf(threePagePdf, {
+  text: "TOP LEFT",
+  fontSize: 30,
+  opacity: 0.5,
+  xPercent: 25,
+  yPercent: 20,
+});
+const customPosDoc = await PDFDocument.load(customPosWatermarked);
+assert.equal(customPosDoc.getPageCount(), 3);
+assert.notEqual(getPageContent(customPosDoc, 0), getPageContent(originalWatermarkTestDoc, 0));
+
+const customImgPosWatermarked = await addWatermarkToPdf(threePagePdf, {
+  imageDataUrl: tinyPngDataUrl,
+  opacity: 0.4,
+  xPercent: 80,
+  yPercent: 85,
+});
+const customImgPosDoc = await PDFDocument.load(customImgPosWatermarked);
+assert.equal(customImgPosDoc.getPageCount(), 3);
+assert.notEqual(getPageContent(customImgPosDoc, 0), getPageContent(originalWatermarkTestDoc, 0));
+
+await assert.rejects(
+  addWatermarkToPdf(threePagePdf, { text: "ERR", xPercent: -5 }),
+  /Watermark xPercent must be a number from 0 to 100/
+);
+await assert.rejects(
+  addWatermarkToPdf(threePagePdf, { text: "ERR", xPercent: 105 }),
+  /Watermark xPercent must be a number from 0 to 100/
+);
+await assert.rejects(
+  addWatermarkToPdf(threePagePdf, { text: "ERR", yPercent: -1 }),
+  /Watermark yPercent must be a number from 0 to 100/
+);
+await assert.rejects(
+  addWatermarkToPdf(threePagePdf, { text: "ERR", yPercent: 120 }),
+  /Watermark yPercent must be a number from 0 to 100/
+);
+console.log("✓ addWatermarkToPdf embeds text and image watermarks with custom draggable positioning (xPercent, yPercent)");
 
 await assert.rejects(
   renderPdfToImages(new ArrayBuffer(0), { scale: 0 }),

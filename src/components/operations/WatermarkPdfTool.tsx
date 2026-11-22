@@ -14,6 +14,7 @@ import {
   Loader2,
   Shield,
   RotateCcw,
+  Move,
 } from "lucide-react";
 
 function formatBytes(bytes: number): string {
@@ -29,6 +30,15 @@ const PRESET_COLORS = [
   { label: "Blue", value: "#2563eb" },
   { label: "Amber", value: "#d97706" },
 ];
+const POSITION_PRESETS = [
+  { label: "Center", x: 50, y: 50 },
+  { label: "Top Left", x: 25, y: 20 },
+  { label: "Top Center", x: 50, y: 15 },
+  { label: "Top Right", x: 75, y: 20 },
+  { label: "Bottom Left", x: 25, y: 80 },
+  { label: "Bottom Center", x: 50, y: 85 },
+  { label: "Bottom Right", x: 75, y: 80 },
+] as const;
 const MAX_WATERMARK_IMAGE_BYTES = 10 * 1024 * 1024;
 
 export function WatermarkPdfTool() {
@@ -46,6 +56,9 @@ export function WatermarkPdfTool() {
   const [opacity, setOpacity] = React.useState<number>(0.3);
   const [rotationDegrees, setRotationDegrees] = React.useState<number>(45);
   const [pageFilter, setPageFilter] = React.useState<"all" | "odd" | "even">("all");
+  const [xPercent, setXPercent] = React.useState<number>(50);
+  const [yPercent, setYPercent] = React.useState<number>(50);
+  const [isDragging, setIsDragging] = React.useState<boolean>(false);
 
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [downloadUrl, setDownloadUrl] = React.useState<string | null>(null);
@@ -53,6 +66,7 @@ export function WatermarkPdfTool() {
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const watermarkImageInputRef = React.useRef<HTMLInputElement>(null);
+  const previewContainerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     return () => {
@@ -61,6 +75,65 @@ export function WatermarkPdfTool() {
       }
     };
   }, [downloadUrl]);
+
+  const handleWatermarkPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleWatermarkPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    const container = previewContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const rawX = ((e.clientX - rect.left) / rect.width) * 100;
+    const rawY = ((e.clientY - rect.top) / rect.height) * 100;
+
+    const clampedX = Math.round(Math.min(100, Math.max(0, rawX)));
+    const clampedY = Math.round(Math.min(100, Math.max(0, rawY)));
+
+    setXPercent(clampedX);
+    setYPercent(clampedY);
+    if (downloadUrl) setDownloadUrl(null);
+  };
+
+  const handleWatermarkPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDragging) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore if already released
+      }
+      setIsDragging(false);
+    }
+  };
+
+  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const container = previewContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const rawX = ((e.clientX - rect.left) / rect.width) * 100;
+    const rawY = ((e.clientY - rect.top) / rect.height) * 100;
+
+    const clampedX = Math.round(Math.min(100, Math.max(0, rawX)));
+    const clampedY = Math.round(Math.min(100, Math.max(0, rawY)));
+
+    setXPercent(clampedX);
+    setYPercent(clampedY);
+    if (downloadUrl) setDownloadUrl(null);
+  };
+
+  const handleResetPosition = () => {
+    setXPercent(50);
+    setYPercent(50);
+    if (downloadUrl) setDownloadUrl(null);
+  };
 
   const handleFileChange = async (selectedFile: File | null) => {
     if (!selectedFile) return;
@@ -117,6 +190,8 @@ export function WatermarkPdfTool() {
         opacity,
         rotationDegrees,
         pageFilter,
+        xPercent,
+        yPercent,
       });
 
       const blob = new Blob([watermarkedBytes as BlobPart], { type: "application/pdf" });
@@ -214,6 +289,9 @@ export function WatermarkPdfTool() {
     setWatermarkImage(null);
     setWatermarkImageName(null);
     setDownloadUrl(null);
+    setXPercent(50);
+    setYPercent(50);
+    setIsDragging(false);
   };
 
   return (
@@ -502,49 +580,194 @@ export function WatermarkPdfTool() {
                   ))}
                 </div>
               </div>
+
+              {/* Position & Alignment Controls */}
+              <div className="space-y-2.5 rounded-lg border bg-background p-3.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Move className="h-3.5 w-3.5 text-blue-500" />
+                    Position & Alignment
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleResetPosition}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Reset
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {POSITION_PRESETS.map((preset) => {
+                    const isActive = xPercent === preset.x && yPercent === preset.y;
+                    return (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => {
+                          setXPercent(preset.x);
+                          setYPercent(preset.y);
+                          if (downloadUrl) setDownloadUrl(null);
+                        }}
+                        className={`rounded px-2.5 py-1 text-xs transition-colors ${
+                          isActive
+                            ? "bg-blue-600 text-white font-semibold shadow-2xs"
+                            : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <span className="text-[11px] text-muted-foreground font-medium block mb-1">
+                      Horizontal (X: {xPercent}%)
+                    </span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={xPercent}
+                      aria-label="Watermark horizontal position percentage"
+                      onChange={(e) => {
+                        setXPercent(Number(e.target.value));
+                        if (downloadUrl) setDownloadUrl(null);
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-muted-foreground font-medium block mb-1">
+                      Vertical (Y: {yPercent}%)
+                    </span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={yPercent}
+                      aria-label="Watermark vertical position percentage"
+                      onChange={(e) => {
+                        setYPercent(Number(e.target.value));
+                        if (downloadUrl) setDownloadUrl(null);
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-muted-foreground">
+                  💡 Tip: Drag the watermark directly inside the live preview or click anywhere on the page to reposition it.
+                </p>
+              </div>
             </div>
 
             {/* Live Visual Preview */}
             <div className="flex flex-col items-center justify-center p-4 rounded-xl border bg-muted/20">
-              <span className="text-xs font-semibold uppercase text-muted-foreground mb-3">
-                Live Preview
-              </span>
-              <div className="relative flex h-56 w-40 items-center justify-center rounded-lg border bg-background shadow-xs overflow-hidden">
-                <div className="absolute inset-x-2 top-3 space-y-1 opacity-20">
+              <div className="flex items-center justify-between w-full mb-3 px-1">
+                <span className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-1.5">
+                  <Move className="h-3.5 w-3.5 text-blue-500" />
+                  Live Preview
+                </span>
+                <span className="text-[11px] font-mono text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded">
+                  X: {xPercent}% · Y: {yPercent}%
+                </span>
+              </div>
+
+              <div
+                ref={previewContainerRef}
+                onClick={handleContainerClick}
+                className="relative flex h-64 w-44 rounded-lg border bg-background shadow-xs overflow-hidden select-none cursor-crosshair"
+                title="Click or drag to position watermark"
+              >
+                {/* Guidelines: subtle center crosshairs */}
+                <div
+                  className={`absolute top-0 bottom-0 left-1/2 w-px border-l border-dashed pointer-events-none transition-colors ${
+                    Math.abs(xPercent - 50) <= 2 ? "border-blue-500/70" : "border-border/30"
+                  }`}
+                />
+                <div
+                  className={`absolute left-0 right-0 top-1/2 h-px border-t border-dashed pointer-events-none transition-colors ${
+                    Math.abs(yPercent - 50) <= 2 ? "border-blue-500/70" : "border-border/30"
+                  }`}
+                />
+
+                {/* Simulated page content lines */}
+                <div className="absolute inset-x-3 top-4 space-y-1.5 opacity-20 pointer-events-none">
                   <div className="h-1.5 w-full bg-foreground rounded" />
                   <div className="h-1.5 w-3/4 bg-foreground rounded" />
                   <div className="h-1.5 w-5/6 bg-foreground rounded" />
                   <div className="h-1.5 w-2/3 bg-foreground rounded" />
+                  <div className="h-1.5 w-4/5 bg-foreground rounded mt-4" />
+                  <div className="h-1.5 w-1/2 bg-foreground rounded" />
                 </div>
 
-                {watermarkImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={watermarkImage}
-                    alt="Image watermark preview"
-                    style={{
-                      transform: `rotate(${rotationDegrees}deg)`,
-                      opacity,
-                    }}
-                    className="max-h-28 max-w-28 object-contain select-none pointer-events-none"
-                  />
-                ) : (
-                  <div
-                    style={{
-                      transform: `rotate(${rotationDegrees}deg)`,
-                      color: fontColor,
-                      opacity: opacity,
-                      fontSize: `${Math.round(fontSize * 0.45)}px`,
-                    }}
-                    className="font-bold tracking-wider select-none text-center pointer-events-none whitespace-nowrap"
-                  >
-                    {watermarkText || "WATERMARK"}
+                {/* Draggable Watermark Item */}
+                <div
+                  onPointerDown={handleWatermarkPointerDown}
+                  onPointerMove={handleWatermarkPointerMove}
+                  onPointerUp={handleWatermarkPointerUp}
+                  onPointerCancel={handleWatermarkPointerUp}
+                  style={{
+                    left: `${xPercent}%`,
+                    top: `${yPercent}%`,
+                    transform: `translate(-50%, -50%) rotate(${rotationDegrees}deg)`,
+                    touchAction: "none",
+                  }}
+                  className={`group absolute select-none transition-shadow ${
+                    isDragging
+                      ? "cursor-grabbing ring-2 ring-blue-500 ring-offset-2 ring-offset-background z-20"
+                      : "cursor-grab hover:ring-1 hover:ring-blue-400 hover:ring-offset-1 z-10"
+                  } rounded p-1`}
+                  title="Drag to reposition watermark"
+                >
+                  {/* Floating drag handle badge */}
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded bg-blue-600 px-1.5 py-0.5 text-[9px] font-medium text-white shadow opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                    <Move className="h-2.5 w-2.5" />
+                    Drag
                   </div>
-                )}
+
+                  {watermarkImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={watermarkImage}
+                      alt="Image watermark preview"
+                      style={{
+                        opacity,
+                      }}
+                      className="max-h-24 max-w-24 object-contain select-none pointer-events-none"
+                      draggable={false}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        color: fontColor,
+                        opacity,
+                        fontSize: `${Math.round(fontSize * 0.42)}px`,
+                      }}
+                      className="font-bold tracking-wider select-none text-center pointer-events-none whitespace-nowrap"
+                    >
+                      {watermarkText || "WATERMARK"}
+                    </div>
+                  )}
+                </div>
               </div>
-              <span className="text-[11px] text-muted-foreground mt-2">
-                Applied across {pageFilter === "all" ? `all ${totalPages} pages` : `${pageFilter} pages`}
-              </span>
+
+              <div className="flex items-center justify-between w-full mt-2.5 text-[11px] text-muted-foreground px-1">
+                <span>
+                  {pageFilter === "all" ? `All ${totalPages} pages` : `${pageFilter} pages`}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResetPosition}
+                  className="hover:text-foreground text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                >
+                  Reset to Center
+                </button>
+              </div>
             </div>
           </div>
 
