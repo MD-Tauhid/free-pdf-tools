@@ -6,6 +6,9 @@ import {
   pdfRectToViewportRect,
   viewportPointToPdf,
   screenDeltaToPdfDelta,
+  computeResizedScreenRect,
+  screenRectToPdfRect,
+  scalePointsToRect,
 } from "@/lib/pdf/coordinates";
 import { usePdfEditorStore } from "@/stores/pdf-editor-store";
 import type { EditorAnnotation } from "@/types/editor";
@@ -137,6 +140,75 @@ if (revertedDraw && "points" in revertedDraw) {
   ]);
 }
 console.log("✓ Drag position updates and undo/redo for image, drawing, and signature");
+
+// Test resize geometry helpers (edge, corner, aspect ratio lock, clamping, rotated viewport, point scaling)
+const resizedEdge = computeResizedScreenRect({
+  startRect: { x: 50, y: 50, width: 100, height: 80 },
+  handle: "e",
+  dx: 40,
+  dy: 20,
+  boundsWidth: 500,
+  boundsHeight: 500,
+});
+assert.deepEqual(resizedEdge, { x: 50, y: 50, width: 140, height: 80 });
+
+const resizedAspect = computeResizedScreenRect({
+  startRect: { x: 100, y: 100, width: 100, height: 50 },
+  handle: "se",
+  dx: 100,
+  dy: 10,
+  boundsWidth: 500,
+  boundsHeight: 500,
+  preserveAspectRatio: true,
+});
+assert.deepEqual(resizedAspect, { x: 100, y: 100, width: 200, height: 100 });
+
+const resizedClampedMin = computeResizedScreenRect({
+  startRect: { x: 100, y: 100, width: 50, height: 50 },
+  handle: "nw",
+  dx: 100,
+  dy: 100,
+  boundsWidth: 500,
+  boundsHeight: 500,
+  minSize: 16,
+});
+assert.deepEqual(resizedClampedMin, { x: 134, y: 134, width: 16, height: 16 });
+
+const convertedPdfRect = screenRectToPdfRect(
+  { x: 40, y: 20, width: 80, height: 60 },
+  viewport
+);
+assert.deepEqual(convertedPdfRect, { x: 10, y: 20, width: 30, height: 40 });
+
+const scaledPoints = scalePointsToRect(
+  [
+    { x: 10, y: 10 },
+    { x: 30, y: 30 },
+  ],
+  { x: 10, y: 10, width: 20, height: 20 },
+  { x: 20, y: 20, width: 40, height: 60 }
+);
+assert.deepEqual(scaledPoints, [
+  { x: 20, y: 20 },
+  { x: 60, y: 80 },
+]);
+
+// Test resize update + undo/redo in store for drawing
+store.updateAnnotation({
+  ...drawAnnotation,
+  pdfRect: { x: 20, y: 20, width: 40, height: 60 },
+  points: scaledPoints,
+});
+assert.deepEqual(
+  store.getAnnotationsForPage(1).find((a) => a.id === "draggable-draw")?.pdfRect,
+  { x: 20, y: 20, width: 40, height: 60 }
+);
+store.undo();
+assert.deepEqual(
+  store.getAnnotationsForPage(1).find((a) => a.id === "draggable-draw")?.pdfRect,
+  { x: 10, y: 10, width: 20, height: 20 }
+);
+console.log("✓ Resize geometry, point scaling, rotated viewport mapping, and undo/redo work");
 
 store.removeAnnotation("history-check", 1);
 store.removeAnnotation("draggable-img", 1);

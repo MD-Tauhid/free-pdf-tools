@@ -15,9 +15,14 @@ import {
 } from "@/types/editor";
 import { cn } from "@/lib/utils";
 import {
+  computeResizedScreenRect,
   pdfPointToViewport,
   pdfRectToViewportRect,
+  scalePointsToRect,
   screenDeltaToPdfDelta,
+  screenRectToPdfRect,
+  type RectBounds,
+  type ResizeHandle,
 } from "@/lib/pdf/coordinates";
 
 const EMPTY_ANNOTATIONS: EditorAnnotation[] = [];
@@ -32,9 +37,138 @@ function pointsToPath(points: PdfPoint[], viewport: PageViewport): string {
     .join(" ");
 }
 
+const HANDLE_CONFIGS: readonly {
+  handle: ResizeHandle;
+  className: string;
+}[] = [
+    { handle: "nw", className: "-top-1.5 -left-1.5 cursor-nwse-resize" },
+    { handle: "n", className: "-top-1.5 left-1/2 -translate-x-1/2 cursor-ns-resize" },
+    { handle: "ne", className: "-top-1.5 -right-1.5 cursor-nesw-resize" },
+    { handle: "e", className: "top-1/2 -right-1.5 -translate-y-1/2 cursor-ew-resize" },
+    { handle: "se", className: "-bottom-1.5 -right-1.5 cursor-nwse-resize" },
+    { handle: "s", className: "-bottom-1.5 left-1/2 -translate-x-1/2 cursor-ns-resize" },
+    { handle: "sw", className: "-bottom-1.5 -left-1.5 cursor-nesw-resize" },
+    { handle: "w", className: "top-1/2 -left-1.5 -translate-y-1/2 cursor-ew-resize" },
+  ];
+
+interface ResizeHandlesProps {
+  startRect: RectBounds;
+  viewport: PageViewport;
+  defaultPreserveAspectRatio?: boolean;
+  onResizePreview: (rect: RectBounds | null) => void;
+  onResizeCommit: (finalRect: RectBounds) => void;
+}
+
 /**
- * Generic draggable box wrapper for rectangular annotations (image, text-box, typed signature).
- * Provides smooth 60fps dragging, live visual transform, clamping to page bounds, and single undo record.
+ * Interactive 8-point resize handles (4 corners + 4 edges) for selected annotations.
+ */
+function ResizeHandles({
+  startRect,
+  viewport,
+  defaultPreserveAspectRatio = false,
+  onResizePreview,
+  onResizeCommit,
+}: ResizeHandlesProps) {
+  const resizeRef = React.useRef<{
+    handle: ResizeHandle;
+    startX: number;
+    startY: number;
+    startRect: RectBounds;
+    lastRect: RectBounds;
+    pointerId: number;
+  } | null>(null);
+
+  const handlePointerDown = (
+    handle: ResizeHandle,
+    event: React.PointerEvent<HTMLDivElement>
+  ) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resizeRef.current = {
+      handle,
+      startX: event.clientX,
+      startY: event.clientY,
+      startRect,
+      lastRect: startRect,
+      pointerId: event.pointerId,
+    };
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const state = resizeRef.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+    event.stopPropagation();
+    const dx = event.clientX - state.startX;
+    const dy = event.clientY - state.startY;
+    const nextRect = computeResizedScreenRect({
+      startRect: state.startRect,
+      handle: state.handle,
+      dx,
+      dy,
+      boundsWidth: viewport.width,
+      boundsHeight: viewport.height,
+      minSize: 16,
+      preserveAspectRatio: defaultPreserveAspectRatio || event.shiftKey,
+    });
+    state.lastRect = nextRect;
+    onResizePreview(nextRect);
+  };
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    const state = resizeRef.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+    event.stopPropagation();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    const { startRect: initial, lastRect } = state;
+    resizeRef.current = null;
+    onResizePreview(null);
+
+    if (
+      lastRect.x !== initial.x ||
+      lastRect.y !== initial.y ||
+      lastRect.width !== initial.width ||
+      lastRect.height !== initial.height
+    ) {
+      onResizeCommit(lastRect);
+    }
+  };
+
+  const handlePointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (resizeRef.current?.pointerId === event.pointerId) {
+      resizeRef.current = null;
+      onResizePreview(null);
+    }
+  };
+
+  return (
+    <>
+      {HANDLE_CONFIGS.map(({ handle, className }) => (
+        <div
+          key={handle}
+          aria-label={`Resize ${handle} handle`}
+          className={cn(
+            "absolute h-3 w-3 rounded-full bg-blue-600 border-2 border-white shadow-sm pointer-events-auto z-40 hover:scale-125 transition-transform",
+            className
+          )}
+          style={{ touchAction: "none" }}
+          onPointerDown={(e) => handlePointerDown(handle, e)}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+        />
+      ))}
+    </>
+  );
+}
+
+/**
+ * Generic draggable and resizable box wrapper for rectangular annotations
+ * (image, text-box, typed signature).
+ * Provides smooth 60fps dragging/resizing, clamping to page bounds, and single undo record.
  */
 interface DraggableBoxProps {
   annotation: EditorAnnotation;
@@ -42,6 +176,7 @@ interface DraggableBoxProps {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
+  getDynamicStyle?: (displayRect: RectBounds) => React.CSSProperties;
   label?: string;
 }
 
@@ -51,6 +186,7 @@ function DraggableBox({
   children,
   className,
   style,
+  getDynamicStyle,
   label,
 }: DraggableBoxProps) {
   const selectAnnotation = usePdfEditorStore((state) => state.selectAnnotation);
@@ -60,6 +196,7 @@ function DraggableBox({
   );
 
   const [dragOffset, setDragOffset] = React.useState<{ dx: number; dy: number } | null>(null);
+  const [resizeRect, setResizeRect] = React.useState<RectBounds | null>(null);
   const dragRef = React.useRef<{
     startX: number;
     startY: number;
@@ -70,9 +207,10 @@ function DraggableBox({
   } | null>(null);
 
   const rect = pdfRectToViewportRect(annotation.pdfRect, viewport);
+  const displayRect = resizeRect ?? rect;
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || resizeRect) return;
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     selectAnnotation(annotation.id);
@@ -141,31 +279,43 @@ function DraggableBox({
     }
   };
 
+  const handleResizeCommit = (finalScreenRect: RectBounds) => {
+    const newPdfRect = screenRectToPdfRect(finalScreenRect, viewport);
+    updateAnnotation({
+      ...annotation,
+      pdfRect: newPdfRect,
+    });
+  };
+
   const displayLabel = label ?? annotation.type.replace("-", " ");
   const isDragging = Boolean(dragOffset);
+  const isResizing = Boolean(resizeRect);
+  const resolvedStyle: React.CSSProperties = {
+    left: displayRect.x,
+    top: displayRect.y,
+    width: displayRect.width,
+    height: displayRect.height,
+    transform: dragOffset
+      ? `translate3d(${dragOffset.dx}px, ${dragOffset.dy}px, 0)`
+      : undefined,
+    zIndex: isDragging || isResizing ? 35 : selected ? 25 : 15,
+    touchAction: "none",
+    ...style,
+    ...(getDynamicStyle ? getDynamicStyle(displayRect) : undefined),
+  };
 
   return (
     <div
       role="button"
       tabIndex={0}
-      aria-label={`Select and drag ${displayLabel} annotation`}
+      aria-label={`Select, drag, and resize ${displayLabel} annotation`}
       className={cn(
         "absolute pointer-events-auto cursor-grab active:cursor-grabbing select-none transition-shadow",
         selected && "outline outline-2 outline-blue-500 rounded-[2px]",
-        isDragging && "shadow-xl z-30 cursor-grabbing ring-2 ring-blue-500"
+        (isDragging || isResizing) && "shadow-xl z-30 ring-2 ring-blue-500",
+        isDragging && "cursor-grabbing"
       )}
-      style={{
-        left: rect.x,
-        top: rect.y,
-        width: rect.width,
-        height: rect.height,
-        transform: dragOffset
-          ? `translate3d(${dragOffset.dx}px, ${dragOffset.dy}px, 0)`
-          : undefined,
-        zIndex: isDragging ? 35 : selected ? 25 : 15,
-        touchAction: "none",
-        ...style,
-      }}
+      style={resolvedStyle}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -179,17 +329,20 @@ function DraggableBox({
     >
       <span className={className}>{children}</span>
 
-      {/* Selected state: Move badge and corner grab handles */}
+      {/* Selected state: Move badge and 8 resize handles */}
       {selected && (
         <>
           <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-blue-600 text-white text-[10px] font-medium px-1.5 py-0.5 rounded shadow pointer-events-none select-none whitespace-nowrap z-40">
             <Move className="h-2.5 w-2.5" />
             <span className="capitalize">{displayLabel}</span>
           </div>
-          <div className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-blue-600 border border-white pointer-events-none z-40" />
-          <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-600 border border-white pointer-events-none z-40" />
-          <div className="absolute -bottom-1 -left-1 h-2 w-2 rounded-full bg-blue-600 border border-white pointer-events-none z-40" />
-          <div className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-blue-600 border border-white pointer-events-none z-40" />
+          <ResizeHandles
+            startRect={rect}
+            viewport={viewport}
+            defaultPreserveAspectRatio={annotation.type === "image"}
+            onResizePreview={setResizeRect}
+            onResizeCommit={handleResizeCommit}
+          />
         </>
       )}
     </div>
@@ -222,6 +375,7 @@ function DraggablePath({
   );
 
   const [dragOffset, setDragOffset] = React.useState<{ dx: number; dy: number } | null>(null);
+  const [resizeRect, setResizeRect] = React.useState<RectBounds | null>(null);
   const dragRef = React.useRef<{
     startX: number;
     startY: number;
@@ -232,10 +386,24 @@ function DraggablePath({
   } | null>(null);
 
   const rect = pdfRectToViewportRect(annotation.pdfRect, viewport);
-  const path = pointsToPath(points, viewport);
+  const displayRect = resizeRect ?? rect;
+
+  const path = React.useMemo(() => {
+    if (!resizeRect) return pointsToPath(points, viewport);
+    return points
+      .map((point, index) => {
+        const sp = pdfPointToViewport(point, viewport);
+        const relX = rect.width > 0.001 ? (sp.x - rect.x) / rect.width : 0.5;
+        const relY = rect.height > 0.001 ? (sp.y - rect.y) / rect.height : 0.5;
+        const sx = resizeRect.x + relX * resizeRect.width;
+        const sy = resizeRect.y + relY * resizeRect.height;
+        return `${index === 0 ? "M" : "L"} ${sx} ${sy}`;
+      })
+      .join(" ");
+  }, [points, viewport, resizeRect, rect]);
 
   const handlePointerDown = (event: React.PointerEvent<HTMLElement | SVGElement>) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || resizeRect) return;
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     selectAnnotation(annotation.id);
@@ -310,7 +478,18 @@ function DraggablePath({
     }
   };
 
+  const handleResizeCommit = (finalScreenRect: RectBounds) => {
+    const newPdfRect = screenRectToPdfRect(finalScreenRect, viewport);
+    const scaledPoints = scalePointsToRect(points, annotation.pdfRect, newPdfRect);
+    updateAnnotation({
+      ...annotation,
+      pdfRect: newPdfRect,
+      points: scaledPoints,
+    });
+  };
+
   const isDragging = Boolean(dragOffset);
+  const isResizing = Boolean(resizeRect);
   const transform = dragOffset
     ? `translate3d(${dragOffset.dx}px, ${dragOffset.dy}px, 0)`
     : undefined;
@@ -330,7 +509,7 @@ function DraggablePath({
         className="absolute inset-0 h-full w-full overflow-visible pointer-events-none"
         style={{
           transform,
-          zIndex: isDragging ? 35 : selected ? 25 : 15,
+          zIndex: isDragging || isResizing ? 35 : selected ? 25 : 15,
           touchAction: "none",
         }}
         aria-label={`Page ${annotation.pageNumber} ${annotation.type} annotation`}
@@ -368,20 +547,21 @@ function DraggablePath({
         />
       </svg>
 
-      {/* Selected bounding box and drag handles */}
+      {/* Selected bounding box and drag/resize handles */}
       {selected && (
         <div
           className={cn(
             "absolute pointer-events-auto cursor-grab active:cursor-grabbing border-2 border-dashed border-blue-500 rounded bg-blue-500/5 select-none transition-shadow",
-            isDragging && "shadow-xl ring-2 ring-blue-500 cursor-grabbing"
+            (isDragging || isResizing) && "shadow-xl ring-2 ring-blue-500",
+            isDragging && "cursor-grabbing"
           )}
           style={{
-            left: Math.max(0, rect.x - 4),
-            top: Math.max(0, rect.y - 4),
-            width: Math.max(20, rect.width + 8),
-            height: Math.max(20, rect.height + 8),
+            left: Math.max(0, displayRect.x - 4),
+            top: Math.max(0, displayRect.y - 4),
+            width: Math.max(20, displayRect.width + 8),
+            height: Math.max(20, displayRect.height + 8),
             transform,
-            zIndex: isDragging ? 36 : 26,
+            zIndex: isDragging || isResizing ? 36 : 26,
             touchAction: "none",
           }}
           {...dragHandlers}
@@ -391,11 +571,12 @@ function DraggablePath({
             <Move className="h-2.5 w-2.5" />
             <span>{displayLabel}</span>
           </div>
-          {/* 4 corner handles */}
-          <div className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-blue-600 border border-white pointer-events-none z-40" />
-          <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-600 border border-white pointer-events-none z-40" />
-          <div className="absolute -bottom-1 -left-1 h-2 w-2 rounded-full bg-blue-600 border border-white pointer-events-none z-40" />
-          <div className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-blue-600 border border-white pointer-events-none z-40" />
+          <ResizeHandles
+            startRect={rect}
+            viewport={viewport}
+            onResizePreview={setResizeRect}
+            onResizeCommit={handleResizeCommit}
+          />
         </div>
       )}
     </>
@@ -577,13 +758,16 @@ export function AnnotationLayer({
                 annotation={annotation}
                 viewport={viewport}
                 label="Signature"
-                className="block h-full w-full"
+                className="block h-full w-full overflow-hidden whitespace-nowrap"
                 style={{
                   color: annotation.strokeColor,
-                  fontSize: annotation.pdfRect.height * viewport.scale,
                   fontFamily: "cursive",
                   opacity: annotation.opacity,
+                  lineHeight: 1,
                 }}
+                getDynamicStyle={(displayRect) => ({
+                  fontSize: displayRect.height,
+                })}
               >
                 {annotation.typedText}
               </DraggableBox>
@@ -601,7 +785,7 @@ export function AnnotationLayer({
                   backgroundImage: `url("${annotation.dataUrl}")`,
                   backgroundPosition: "center",
                   backgroundRepeat: "no-repeat",
-                  backgroundSize: "contain",
+                  backgroundSize: "100% 100%",
                 }}
               >
                 {null}
