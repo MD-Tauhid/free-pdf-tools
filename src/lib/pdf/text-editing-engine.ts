@@ -65,7 +65,7 @@ export function assessTextReplacement(
     replacementText.length > item.text.length
   ) {
     warnings.push(
-      "The replacement is longer than the original and may not fit its fixed-width span. Export checks the actual font width."
+      "The replacement is longer than the original; the replacement box will expand to fit the text."
     );
   }
   warnings.push(

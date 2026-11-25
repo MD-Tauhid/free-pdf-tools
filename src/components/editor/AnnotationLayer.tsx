@@ -15,6 +15,7 @@ import {
 } from "@/types/editor";
 import { cn } from "@/lib/utils";
 import {
+  computeExpandedScreenRect,
   computeResizedScreenRect,
   pdfPointToViewport,
   pdfRectToViewportRect,
@@ -590,6 +591,30 @@ function TextAnnotationOverlay({
   annotation: TextAnnotation;
   viewport: PageViewport;
 }) {
+  const updateAnnotation = usePdfEditorStore((state) => state.updateAnnotation);
+  const measureRef = React.useRef<HTMLSpanElement>(null);
+
+  React.useLayoutEffect(() => {
+    const el = measureRef.current;
+    if (!el) return;
+
+    const currentScreenRect = pdfRectToViewportRect(annotation.pdfRect, viewport);
+    const expandedScreenRect = computeExpandedScreenRect(
+      currentScreenRect,
+      el.scrollWidth + 4,
+      el.scrollHeight,
+      viewport.width,
+      viewport.height
+    );
+    if (!expandedScreenRect) return;
+
+    const nextPdfRect = screenRectToPdfRect(expandedScreenRect, viewport);
+    updateAnnotation({
+      ...annotation,
+      pdfRect: nextPdfRect,
+    });
+  }, [annotation, viewport, updateAnnotation]);
+
   return (
     <DraggableBox
       annotation={annotation}
@@ -608,7 +633,9 @@ function TextAnnotationOverlay({
         lineHeight: 1.3,
       }}
     >
-      {annotation.content}
+      <span ref={measureRef} className="block w-full whitespace-pre-wrap break-words">
+        {annotation.content}
+      </span>
     </DraggableBox>
   );
 }
@@ -700,21 +727,23 @@ export function AnnotationLayer({
         return (
           <div
             key={`replacement-${replacement.sourceItemId}`}
-            className="absolute flex items-center overflow-hidden whitespace-nowrap"
+            className="absolute flex items-center whitespace-nowrap"
             aria-label={`Text replacement preview: ${replacement.replacementText}`}
             style={{
               left: rect.x - viewport.scale,
               top: rect.y - viewport.scale,
-              width: rect.width + 2 * viewport.scale,
-              height: rect.height + 2 * viewport.scale,
+              minWidth: rect.width + 2 * viewport.scale,
+              maxWidth: Math.max(rect.width + 2 * viewport.scale, viewport.width - rect.x),
+              minHeight: rect.height + 2 * viewport.scale,
               paddingLeft: viewport.scale,
+              paddingRight: viewport.scale,
               backgroundColor: replacement.backgroundColor,
               color: replacement.color,
               fontSize: replacement.fontSize * viewport.scale,
               fontFamily: getCssFontFamily(replacement.fontFamily),
               fontWeight: replacement.bold ? "bold" : "normal",
               fontStyle: replacement.italic ? "italic" : "normal",
-              lineHeight: 1,
+              lineHeight: 1.2,
             }}
           >
             {replacement.replacementText}

@@ -6,6 +6,7 @@ import {
   pdfRectToViewportRect,
   viewportPointToPdf,
   screenDeltaToPdfDelta,
+  computeExpandedScreenRect,
   computeResizedScreenRect,
   screenRectToPdfRect,
   scalePointsToRect,
@@ -208,7 +209,39 @@ assert.deepEqual(
   store.getAnnotationsForPage(1).find((a) => a.id === "draggable-draw")?.pdfRect,
   { x: 10, y: 10, width: 20, height: 20 }
 );
-console.log("✓ Resize geometry, point scaling, rotated viewport mapping, and undo/redo work");
+
+// Test auto-expand calculation for overflowing text boxes
+assert.equal(
+  computeExpandedScreenRect(
+    { x: 20, y: 30, width: 200, height: 40 },
+    180,
+    38,
+    600,
+    800
+  ),
+  null
+);
+assert.deepEqual(
+  computeExpandedScreenRect(
+    { x: 20, y: 30, width: 200, height: 40 },
+    240,
+    95,
+    600,
+    800
+  ),
+  { x: 20, y: 30, width: 240, height: 95 }
+);
+assert.deepEqual(
+  computeExpandedScreenRect(
+    { x: 500, y: 750, width: 80, height: 30 },
+    150,
+    100,
+    600,
+    800
+  ),
+  { x: 500, y: 750, width: 100, height: 50 }
+);
+console.log("✓ Resize geometry, point scaling, text-box overflow expansion, rotated viewport mapping, and undo/redo work");
 
 store.removeAnnotation("history-check", 1);
 store.removeAnnotation("draggable-img", 1);

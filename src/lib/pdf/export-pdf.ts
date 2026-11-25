@@ -400,17 +400,9 @@ async function applyTextReplacement(
   const fontFamily = replacement.fontFamily ?? "Helvetica";
   const bold = replacement.bold ?? false;
   const italic = replacement.italic ?? false;
-  const availableWidth = replacement.pdfRect.width - 2;
   const rect = replacement.pdfRect;
-
-  // Draw background wipe rectangle to cover original PDF text
-  page.drawRectangle({
-    x: rect.x - 1,
-    y: rect.y - 1,
-    width: rect.width + 2,
-    height: rect.height + 2,
-    color: parseColor(replacement.backgroundColor),
-  });
+  const pageWidth = page.getSize().width;
+  const maxAllowedWidth = Math.max(rect.width, pageWidth - rect.x - 2);
 
   const font = await getTextFont(pdf, bold, italic, fontFamily);
   const isBanglaFont = fontFamily === "Bangla";
@@ -421,18 +413,30 @@ async function applyTextReplacement(
       replacement.replacementText,
       replacement.fontSize
     );
-    if (textWidth > availableWidth) {
-      throw new Error(
-        `Replacement text is too wide for this span (${textWidth.toFixed(1)} pt needed, ${availableWidth.toFixed(1)} pt available). Shorten the text or reduce its font size.`
-      );
-    }
+    const expandedWidth = Math.max(
+      rect.width,
+      Math.min(textWidth + 4, maxAllowedWidth)
+    );
+    const expandedHeight = Math.max(rect.height, replacement.fontSize * 1.25);
+    const topEdge = rect.y + rect.height;
+    const drawY = Math.max(0, topEdge - expandedHeight);
+
+    // Draw background wipe rectangle to cover original PDF text and expanded area
+    page.drawRectangle({
+      x: rect.x - 1,
+      y: drawY - 1,
+      width: expandedWidth + 2,
+      height: expandedHeight + 2,
+      color: parseColor(replacement.backgroundColor),
+    });
+
     page.drawText(replacement.replacementText, {
       x: rect.x,
-      y: rect.y + Math.max(0, (rect.height - replacement.fontSize) / 2),
+      y: drawY + Math.max(0, (expandedHeight - replacement.fontSize) / 2),
       size: replacement.fontSize,
       font,
       color: parseColor(replacement.color),
-      maxWidth: availableWidth,
+      maxWidth: Math.max(1, expandedWidth - 2),
     });
   } else {
     // Non-WinAnsi script (e.g. Bangla Unicode) or explicit Bangla font
@@ -444,20 +448,31 @@ async function applyTextReplacement(
       bold,
       italic
     );
-    if (rendered.widthPt > availableWidth) {
-      throw new Error(
-        `Replacement text is too wide for this span (${rendered.widthPt.toFixed(1)} pt needed, ${availableWidth.toFixed(1)} pt available). Shorten the text or reduce its font size.`
-      );
-    }
+    const expandedWidth = Math.max(
+      rect.width,
+      Math.min(rendered.widthPt + 4, maxAllowedWidth)
+    );
+    const expandedHeight = Math.max(rect.height, rendered.heightPt);
+    const topEdge = rect.y + rect.height;
+    const rectY = Math.max(0, topEdge - expandedHeight);
+
+    page.drawRectangle({
+      x: rect.x - 1,
+      y: rectY - 1,
+      width: expandedWidth + 2,
+      height: expandedHeight + 2,
+      color: parseColor(replacement.backgroundColor),
+    });
+
     const image = await pdf.embedPng(rendered.bytes);
-    const drawWidth = Math.min(rendered.widthPt, availableWidth);
+    const drawWidth = Math.min(rendered.widthPt, Math.max(1, expandedWidth - 2));
     const drawHeight = (drawWidth / Math.max(1, rendered.widthPt)) * rendered.heightPt;
-    const drawY = rect.y + Math.max(0, (rect.height - drawHeight) / 2);
+    const drawY = rectY + Math.max(0, (expandedHeight - drawHeight) / 2);
     page.drawImage(image, {
       x: rect.x,
       y: drawY,
       width: drawWidth,
-      height: Math.min(drawHeight, rect.height + 2),
+      height: Math.min(drawHeight, expandedHeight + 2),
     });
   }
 }

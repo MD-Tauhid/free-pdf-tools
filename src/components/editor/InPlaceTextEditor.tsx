@@ -120,22 +120,42 @@ function InPlaceForm({
     newItalic = italic,
     newColor = color,
     newBg = backgroundColor
-  ): TextReplacement => ({
-    id: existingReplacement?.id ?? crypto.randomUUID(),
-    type: "text-replacement",
-    sourceItemId: item.id,
-    originalItem: item,
-    originalText: item.text,
-    replacementText: newText,
-    fontSize: newSize,
-    fontFamily: newFont,
-    bold: newBold,
-    italic: newItalic,
-    color: newColor,
-    backgroundColor: newBg,
-    pageNumber: item.pageNumber,
-    pdfRect: item.pdfRect,
-  });
+  ): TextReplacement => {
+    const factor =
+      newFont === "Courier"
+        ? 0.6
+        : newFont === "Bangla"
+          ? 0.58
+          : newBold
+            ? 0.55
+            : 0.5;
+    const estimatedWidth = newText.length * newSize * factor + 4;
+    const expandedWidth = Math.max(item.pdfRect.width, estimatedWidth);
+    const expandedHeight = Math.max(item.pdfRect.height, newSize * 1.25);
+    const topEdge = item.pdfRect.y + item.pdfRect.height;
+
+    return {
+      id: existingReplacement?.id ?? crypto.randomUUID(),
+      type: "text-replacement",
+      sourceItemId: item.id,
+      originalItem: item,
+      originalText: item.text,
+      replacementText: newText,
+      fontSize: newSize,
+      fontFamily: newFont,
+      bold: newBold,
+      italic: newItalic,
+      color: newColor,
+      backgroundColor: newBg,
+      pageNumber: item.pageNumber,
+      pdfRect: {
+        x: item.pdfRect.x,
+        y: Math.max(0, topEdge - expandedHeight),
+        width: expandedWidth,
+        height: expandedHeight,
+      },
+    };
+  };
 
   const handleTextChange = (newText: string) => {
     setText(newText);
@@ -503,8 +523,18 @@ function InPlaceForm({
         style={{
           left: screenRect.x - viewport.scale,
           top: screenRect.y - viewport.scale,
-          width: Math.max(screenRect.width + 4 * viewport.scale, 40),
-          height: screenRect.height + 2 * viewport.scale,
+          width: Math.min(
+            Math.max(
+              screenRect.width + 4 * viewport.scale,
+              estimatedTextWidth * viewport.scale + 16,
+              40
+            ),
+            Math.max(screenRect.width + 4 * viewport.scale, viewport.width - screenRect.x - 4)
+          ),
+          height: Math.max(
+            screenRect.height + 2 * viewport.scale,
+            fontSize * 1.25 * viewport.scale + 4
+          ),
         }}
         onClick={(e) => e.stopPropagation()}
       >

@@ -298,3 +298,36 @@ export function scalePointsToRect(
     };
   });
 }
+
+/**
+ * Computes an expanded Screen Space rectangle when content overflows `currentRect`,
+ * keeping the top-left corner anchored and clamping within page bounds.
+ * Returns `null` if `neededWidth` and `neededHeight` already fit within `tolerance`.
+ */
+export function computeExpandedScreenRect(
+  currentRect: RectBounds,
+  neededWidth: number,
+  neededHeight: number,
+  boundsWidth: number,
+  boundsHeight: number,
+  tolerance = 1.5
+): RectBounds | null {
+  const maxWidth = Math.max(currentRect.width, boundsWidth - currentRect.x);
+  const maxHeight = Math.max(currentRect.height, boundsHeight - currentRect.y);
+  const targetWidth = Math.min(maxWidth, Math.max(currentRect.width, neededWidth));
+  const targetHeight = Math.min(maxHeight, Math.max(currentRect.height, neededHeight));
+
+  if (
+    targetWidth <= currentRect.width + tolerance &&
+    targetHeight <= currentRect.height + tolerance
+  ) {
+    return null;
+  }
+
+  return {
+    x: currentRect.x,
+    y: currentRect.y,
+    width: targetWidth,
+    height: targetHeight,
+  };
+}

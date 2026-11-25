@@ -154,16 +154,19 @@ const banglaTextBoxExported = await exportPdfWithAnnotations(
 assert.ok(banglaTextBoxExported.byteLength > source.byteLength);
 console.log("✓ Export supports Bangla local language (বাংলা) in replacements and text boxes");
 
-await assert.rejects(
-  exportPdfWithAnnotations(source, {}, [replacement("A replacement much too long")]),
-  /too wide/
+// Long replacement text automatically expands the replacement box instead of failing
+const longReplacementExported = await exportPdfWithAnnotations(
+  source,
+  {},
+  [replacement("A replacement much longer than original text")]
 );
-await assert.rejects(
-  exportPdfWithAnnotations(source, {}, [
-    { ...replacement("একটি অনেক বড় বাংলা লেখা যা স্প্যানে ধরে না"), fontFamily: "Bangla" },
-  ]),
-  /too wide/
+assert.ok(longReplacementExported.byteLength > source.byteLength);
+const longBanglaReplacementExported = await exportPdfWithAnnotations(
+  source,
+  {},
+  [{ ...replacement("একটি অনেক বড় বাংলা লেখা যা স্প্যানে ধরে না"), fontFamily: "Bangla" }]
 );
+assert.ok(longBanglaReplacementExported.byteLength > source.byteLength);
 await assert.rejects(
   exportPdfWithAnnotations(source, {}, [replacement("two\nlines")]),
   /line breaks/

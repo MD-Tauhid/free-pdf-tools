@@ -126,22 +126,42 @@ function SelectedTextPanel() {
 
   const createReplacement = (
     values: typeof draft
-  ): TextReplacement => ({
-    id: existingReplacement?.id ?? crypto.randomUUID(),
-    type: "text-replacement",
-    sourceItemId: item.id,
-    originalItem: item,
-    originalText: item.text,
-    replacementText: values.text,
-    fontSize: values.fontSize,
-    fontFamily: values.fontFamily,
-    bold: values.bold,
-    italic: values.italic,
-    color: values.color,
-    backgroundColor: values.backgroundColor,
-    pageNumber: item.pageNumber,
-    pdfRect: item.pdfRect,
-  });
+  ): TextReplacement => {
+    const valCharFactor =
+      values.fontFamily === "Courier"
+        ? 0.6
+        : values.fontFamily === "Bangla"
+        ? 0.58
+        : values.bold
+        ? 0.55
+        : 0.5;
+    const neededWidth = values.text.length * values.fontSize * valCharFactor + 4;
+    const expandedWidth = Math.max(item.pdfRect.width, neededWidth);
+    const expandedHeight = Math.max(item.pdfRect.height, values.fontSize * 1.25);
+    const topEdge = item.pdfRect.y + item.pdfRect.height;
+
+    return {
+      id: existingReplacement?.id ?? crypto.randomUUID(),
+      type: "text-replacement",
+      sourceItemId: item.id,
+      originalItem: item,
+      originalText: item.text,
+      replacementText: values.text,
+      fontSize: values.fontSize,
+      fontFamily: values.fontFamily,
+      bold: values.bold,
+      italic: values.italic,
+      color: values.color,
+      backgroundColor: values.backgroundColor,
+      pageNumber: item.pageNumber,
+      pdfRect: {
+        x: item.pdfRect.x,
+        y: Math.max(0, topEdge - expandedHeight),
+        width: expandedWidth,
+        height: expandedHeight,
+      },
+    };
+  };
 
   const updateDraft = (values: Partial<typeof draft>) => {
     const next = { ...draft, ...values };
